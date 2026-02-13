@@ -11,7 +11,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Past;
+import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,6 +27,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "customer")
+@Builder
 public class Customer {
 
     @Id
@@ -41,6 +47,7 @@ public class Customer {
     @Column(name = "phone", length = 20, nullable = false)
     private String phone;
 
+    @Past
     @Column(name = "date_birth", nullable = false)
     private LocalDate dateBirth;
 
@@ -51,17 +58,41 @@ public class Customer {
     @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(20)")
     private CustomerStatus status;
 
+    @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Sold> sales = new ArrayList<>();
 
-    //constructor
+    // constructor
     public Customer() {
+    }
+
+    // constructor complete
+    public Customer(UUID id, String name, String email, String cpf, String phone, LocalDate dateBirth, String address, CustomerStatus status, LocalDateTime createdAt, LocalDateTime updatedAt, List<Sold> sales) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.cpf = cpf;
+        this.phone = phone;
+        this.dateBirth = dateBirth;
+        this.address = address;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.sales = sales;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (status == null) {
+            status = CustomerStatus.ACTIVE;
+        }
     }
 
     //getters and setters
