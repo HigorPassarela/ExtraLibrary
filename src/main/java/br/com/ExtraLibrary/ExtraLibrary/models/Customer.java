@@ -1,8 +1,11 @@
 package br.com.ExtraLibrary.ExtraLibrary.models;
 
+import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -44,8 +47,9 @@ public class Customer {
     @Column(name = "address", length = 100, nullable = false)
     private String address;
 
-    @Column(name = "status", nullable = false)
-    private Boolean status = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(20)")
+    private CustomerStatus status;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -117,11 +121,11 @@ public class Customer {
         this.address = address;
     }
 
-    public Boolean getStatus() {
+    public CustomerStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Boolean status) {
+    public void setStatus(CustomerStatus status) {
         this.status = status;
     }
 
@@ -154,11 +158,29 @@ public class Customer {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Customer customer = (Customer) o;
-        return Objects.equals(id, customer.id) && Objects.equals(name, customer.name) && Objects.equals(email, customer.email) && Objects.equals(cpf, customer.cpf) && Objects.equals(phone, customer.phone) && Objects.equals(dateBirth, customer.dateBirth) && Objects.equals(address, customer.address) && Objects.equals(status, customer.status) && Objects.equals(createdAt, customer.createdAt) && Objects.equals(updatedAt, customer.updatedAt) && Objects.equals(sales, customer.sales);
+        return Objects.equals(id, customer.id) && Objects.equals(name, customer.name) && Objects.equals(email, customer.email) && Objects.equals(cpf, customer.cpf) && Objects.equals(phone, customer.phone) && Objects.equals(dateBirth, customer.dateBirth) && Objects.equals(address, customer.address) && status == customer.status && Objects.equals(createdAt, customer.createdAt) && Objects.equals(updatedAt, customer.updatedAt) && Objects.equals(sales, customer.sales);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, name, email, cpf, phone, dateBirth, address, status, createdAt, updatedAt, sales);
+    }
+
+    //toString
+    @Override
+    public String toString() {
+        return "Customer{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", cpf='" + cpf + '\'' +
+                ", phone='" + phone + '\'' +
+                ", dateBirth=" + dateBirth +
+                ", address='" + address + '\'' +
+                ", status=" + status +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", sales=" + sales +
+                '}';
     }
 }
