@@ -22,6 +22,8 @@ public record BookRequest(
         BookGender gender,
         @NotNull(message = "Campo price Obrigatório!")
         BigDecimal price,
+        @NotNull(message = "Campo quantity Obrigatório!")
+        Long quantity,
         @NotNull(message = "Campo bookStatus Obrigatório!")
         BookStatus bookStatus,
         @NotNull(message = "Campo authorId é obrigatório!")

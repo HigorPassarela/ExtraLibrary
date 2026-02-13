@@ -10,7 +10,7 @@ public record ErrorResponse(
         List<ErrorField> errors
 ) {
 
-    public static ErrorResponse defaultResponse(String mensagem) {
+    public static ErrorResponse badrequest(String mensagem) {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), mensagem, List.of());
     }
 

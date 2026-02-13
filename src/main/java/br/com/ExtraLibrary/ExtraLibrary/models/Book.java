@@ -49,8 +49,11 @@ public class Book {
     @Column(name = "price", precision = 18, scale = 2, nullable = false)
     private BigDecimal price;
 
+    @Column(name = "quantity", nullable = false)
+    private Long quantity;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "book_status", length = 20, nullable = false)
+    @Column(name = "book_status", columnDefinition = "VARCHAT(50)", length = 20, nullable = false)
     private BookStatus bookStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -62,13 +65,14 @@ public class Book {
     }
 
     // constructor
-    public Book(UUID id, String isbn, String title, LocalDate publicationDate, BookGender gender, BigDecimal price, BookStatus bookStatus, Author author) {
+    public Book(UUID id, String isbn, String title, LocalDate publicationDate, BookGender gender, BigDecimal price, Long quantity, BookStatus bookStatus, Author author) {
         this.id = id;
         this.isbn = isbn;
         this.title = title;
         this.publicationDate = publicationDate;
         this.gender = gender;
         this.price = price;
+        this.quantity = quantity;
         this.bookStatus = bookStatus;
         this.author = author;
     }
@@ -122,6 +126,14 @@ public class Book {
         this.price = price;
     }
 
+    public Long getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Long quantity) {
+        this.quantity = quantity;
+    }
+
     public BookStatus getBookStatus() {
         return bookStatus;
     }
@@ -143,12 +155,12 @@ public class Book {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Book book = (Book) o;
-        return Objects.equals(id, book.id) && Objects.equals(isbn, book.isbn) && Objects.equals(title, book.title) && Objects.equals(publicationDate, book.publicationDate) && gender == book.gender && Objects.equals(price, book.price) && bookStatus == book.bookStatus && Objects.equals(author, book.author);
+        return Objects.equals(id, book.id) && Objects.equals(isbn, book.isbn) && Objects.equals(title, book.title) && Objects.equals(publicationDate, book.publicationDate) && gender == book.gender && Objects.equals(price, book.price) && Objects.equals(quantity, book.quantity) && bookStatus == book.bookStatus && Objects.equals(author, book.author);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, isbn, title, publicationDate, gender, price, bookStatus, author);
+        return Objects.hash(id, isbn, title, publicationDate, gender, price, quantity, bookStatus, author);
     }
 
     // ToString
@@ -161,6 +173,7 @@ public class Book {
                 ", publicationDate=" + publicationDate +
                 ", gender=" + gender +
                 ", price=" + price +
+                ", quantity= " + quantity +
                 ", bookStatus=" + bookStatus +
                 ", authorId=" + (author != null ? author.getId() : null) +
                 '}';

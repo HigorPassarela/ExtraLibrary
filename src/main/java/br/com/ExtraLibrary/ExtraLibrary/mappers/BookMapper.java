@@ -13,6 +13,7 @@ public class BookMapper {
                 .publicationDate(bookRequest.publicationDate())
                 .gender(bookRequest.gender())
                 .price(bookRequest.price())
+                .quantity(bookRequest.quantity())
                 .bookStatus(bookRequest.bookStatus())
                 .build();
     }
@@ -25,6 +26,7 @@ public class BookMapper {
                 book.getPublicationDate(),
                 book.getGender(),
                 book.getPrice(),
+                book.getQuantity(),
                 book.getBookStatus()
         );
     }

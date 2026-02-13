@@ -14,6 +14,7 @@ public record BookResponse(
         LocalDate publicationDate,
         BookGender gender,
         BigDecimal price,
+        Long quantity,
         BookStatus bookStatus
 ) {
 }
