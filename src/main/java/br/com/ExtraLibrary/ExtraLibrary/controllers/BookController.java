@@ -42,7 +42,7 @@ public class BookController {
     }
 
     @PostMapping
-    @Operation(summary = "Create/Register new Author", description = "Endpoint for register Authors")
+    @Operation(summary = "Create/Register new Books", description = "Endpoint for register Books")
     public ResponseEntity<Object> save(@RequestBody @Valid BookRequest bookRequest) {
         try {
             Book book = BookMapper.toEntity(bookRequest);

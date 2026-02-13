@@ -82,20 +82,20 @@ public class BookService {
         return repository.save(bookUpdate);
     }
 
-    @Transactional
-    public Book updatedQuantity(UUID id, Long newQuantity) {
-        Book book = getForId(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Livro com Id: " + id + " não encontrado!"));
-
-        if (newQuantity < 0 ){
-            throw new IllegalArgumentException("Quantidade não pode ser negativa!");
-        }
-
-        book.setQuantity(newQuantity);
-        updateBookStatus(book);
-
-        return repository.save(book);
-    }
+//    @Transactional
+//    public Book updatedQuantity(UUID id, Long newQuantity) {
+//        Book book = getForId(id)
+//                .orElseThrow(() -> new ResourceNotFoundException("Livro com Id: " + id + " não encontrado!"));
+//
+//        if (newQuantity < 0 ){
+//            throw new IllegalArgumentException("Quantidade não pode ser negativa!");
+//        }
+//
+//        book.setQuantity(newQuantity);
+//        updateBookStatus(book);
+//
+//        return repository.save(book);
+//    }
 
     @Transactional
     public Book sellBookStock(UUID id, Long quantityToSell) {
