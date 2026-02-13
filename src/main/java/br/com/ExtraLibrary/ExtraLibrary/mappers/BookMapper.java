@@ -14,7 +14,6 @@ public class BookMapper {
                 .gender(bookRequest.gender())
                 .price(bookRequest.price())
                 .quantity(bookRequest.quantity())
-                .bookStatus(bookRequest.bookStatus())
                 .build();
     }
 

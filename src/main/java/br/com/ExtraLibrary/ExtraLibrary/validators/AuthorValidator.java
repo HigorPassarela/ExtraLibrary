@@ -27,9 +27,12 @@ public class AuthorValidator {
                 author.getName(), author.getBirthDate(), author.getNacionality()
         );
 
-        if (author.getId() == null) {
-            return findAuthor.isPresent();
-        }
-        return !author.getId().equals(findAuthor.get().getId()) && findAuthor.isPresent();
+        return findAuthor.map(existAuthor -> {
+            if (author.getId() == null) {
+                return true;
+            }
+
+            return !author.getId().equals(existAuthor.getId());
+        }).orElse(false);
     }
 }
