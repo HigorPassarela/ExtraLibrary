@@ -40,7 +40,6 @@ public class CustomerValidator {
             if (existingByCpf.isPresent()) {
                 Customer existing = existingByCpf.get();
 
-                // Se é criação ou é um cliente diferente
                 if (customer.getId() == null || !customer.getId().equals(existing.getId())) {
                     throw new DuplicatedRegisterException("Já existe um cliente com este CPF: " + customer.getCpf());
                 }
