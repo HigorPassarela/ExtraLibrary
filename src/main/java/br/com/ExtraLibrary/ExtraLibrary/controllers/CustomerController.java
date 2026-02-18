@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +55,27 @@ public class CustomerController {
 
             return ResponseEntity.created(location).build();
 
+        } catch (DuplicatedRegisterException e) {
+            var error = ErrorResponse.conflict(e.getMessage());
+            return ResponseEntity.status(error.status()).body(error);
+        }
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update customer", description = "Endpoint for update customers details")
+    public ResponseEntity<Object> update(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id, @RequestBody CustomerRequest customerRequest) {
+        try {
+            UUID customerId = UUID.fromString(id);
+            Customer customer = CustomerMapper.toEntity(customerRequest);
+            service.update(customerId,customer);
+
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            var error = ErrorResponse.badrequest(e.getMessage());
+            return ResponseEntity.status(error.status()).body(error);
+        } catch (ResourceNotFoundException e) {
+            var error = ErrorResponse.notFound(e.getMessage());
+            return ResponseEntity.status(error.status()).body(error);
         } catch (DuplicatedRegisterException e) {
             var error = ErrorResponse.conflict(e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
