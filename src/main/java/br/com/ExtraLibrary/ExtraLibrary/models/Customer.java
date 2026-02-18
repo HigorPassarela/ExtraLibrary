@@ -1,14 +1,22 @@
 package br.com.ExtraLibrary.ExtraLibrary.models;
 
+import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Past;
+import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +27,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "customer")
+@Builder
 public class Customer {
 
     @Id
@@ -38,26 +47,52 @@ public class Customer {
     @Column(name = "phone", length = 20, nullable = false)
     private String phone;
 
+    @Past
     @Column(name = "date_birth", nullable = false)
     private LocalDate dateBirth;
 
     @Column(name = "address", length = 100, nullable = false)
     private String address;
 
-    @Column(name = "status", nullable = false)
-    private Boolean status = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(20)")
+    private CustomerStatus status;
 
+    @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Sold> sales = new ArrayList<>();
 
-    //constructor
+    // constructor
     public Customer() {
+    }
+
+    // constructor complete
+    public Customer(UUID id, String name, String email, String cpf, String phone, LocalDate dateBirth, String address, CustomerStatus status, LocalDateTime createdAt, LocalDateTime updatedAt, List<Sold> sales) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.cpf = cpf;
+        this.phone = phone;
+        this.dateBirth = dateBirth;
+        this.address = address;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.sales = sales;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (status == null) {
+            status = CustomerStatus.ACTIVE;
+        }
     }
 
     //getters and setters
@@ -117,11 +152,11 @@ public class Customer {
         this.address = address;
     }
 
-    public Boolean getStatus() {
+    public CustomerStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Boolean status) {
+    public void setStatus(CustomerStatus status) {
         this.status = status;
     }
 
@@ -154,11 +189,29 @@ public class Customer {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Customer customer = (Customer) o;
-        return Objects.equals(id, customer.id) && Objects.equals(name, customer.name) && Objects.equals(email, customer.email) && Objects.equals(cpf, customer.cpf) && Objects.equals(phone, customer.phone) && Objects.equals(dateBirth, customer.dateBirth) && Objects.equals(address, customer.address) && Objects.equals(status, customer.status) && Objects.equals(createdAt, customer.createdAt) && Objects.equals(updatedAt, customer.updatedAt) && Objects.equals(sales, customer.sales);
+        return Objects.equals(id, customer.id) && Objects.equals(name, customer.name) && Objects.equals(email, customer.email) && Objects.equals(cpf, customer.cpf) && Objects.equals(phone, customer.phone) && Objects.equals(dateBirth, customer.dateBirth) && Objects.equals(address, customer.address) && status == customer.status && Objects.equals(createdAt, customer.createdAt) && Objects.equals(updatedAt, customer.updatedAt) && Objects.equals(sales, customer.sales);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, name, email, cpf, phone, dateBirth, address, status, createdAt, updatedAt, sales);
+    }
+
+    //toString
+    @Override
+    public String toString() {
+        return "Customer{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", cpf='" + cpf + '\'' +
+                ", phone='" + phone + '\'' +
+                ", dateBirth=" + dateBirth +
+                ", address='" + address + '\'' +
+                ", status=" + status +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", sales=" + sales +
+                '}';
     }
 }

@@ -13,6 +13,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
@@ -63,6 +65,39 @@ public class Sold {
 
     //constructor
     public Sold() {
+    }
+
+    //constructor complete
+    public Sold(Long id, LocalDateTime dateSale, BigDecimal subtotal, BigDecimal discount, BigDecimal finalPrice, FormPayment formPayment, LocalDateTime createdAt, Customer customer, List<UUID> bookIds) {
+        this.id = id;
+        this.dateSale = dateSale;
+        this.subtotal = subtotal;
+        this.discount = discount;
+        this.finalPrice = finalPrice;
+        this.formPayment = formPayment;
+        this.createdAt = createdAt;
+        this.customer = customer;
+        this.bookIds = bookIds;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (dateSale == null) {
+            dateSale = LocalDateTime.now();
+        }
+        calculateFinalPrice();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        calculateFinalPrice();
+    }
+
+    private void calculateFinalPrice() {
+        if (subtotal != null) {
+            BigDecimal discountAmount = discount != null ? discount : BigDecimal.ZERO;
+            finalPrice = subtotal.subtract(discountAmount);
+        }
     }
 
     //getters and setters
@@ -149,5 +184,21 @@ public class Sold {
     @Override
     public int hashCode() {
         return Objects.hash(id, dateSale, subtotal, discount, finalPrice, formPayment, createdAt, customer, bookIds);
+    }
+
+    //toString
+    @Override
+    public String toString() {
+        return "Sold{" +
+                "id=" + id +
+                ", dateSale=" + dateSale +
+                ", subtotal=" + subtotal +
+                ", discount=" + discount +
+                ", finalPrice=" + finalPrice +
+                ", formPayment=" + formPayment +
+                ", createdAt=" + createdAt +
+                ", customer=" + customer +
+                ", bookIds=" + bookIds +
+                '}';
     }
 }
