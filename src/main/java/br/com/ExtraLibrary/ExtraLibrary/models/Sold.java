@@ -17,6 +17,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sold")
+@Builder
 public class Sold {
 
     @Id
@@ -35,6 +38,7 @@ public class Sold {
     @Column(name = "id")
     private Long id;
 
+    @CreationTimestamp
     @Column(name = "date_sale", nullable = false)
     private LocalDateTime dateSale;
 
@@ -85,19 +89,10 @@ public class Sold {
         if (dateSale == null) {
             dateSale = LocalDateTime.now();
         }
-        calculateFinalPrice();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        calculateFinalPrice();
-    }
-
-    private void calculateFinalPrice() {
-        if (subtotal != null) {
-            BigDecimal discountAmount = discount != null ? discount : BigDecimal.ZERO;
-            finalPrice = subtotal.subtract(discountAmount);
-        }
     }
 
     //getters and setters

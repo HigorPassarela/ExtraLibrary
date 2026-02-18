@@ -32,6 +32,7 @@ public class SoldValidator {
     public void valid(Sold sold){
         validateBasicFields(sold);
         validateCustomer(sold);
+        calculateAndValidatePrices(sold);
         validateBooks(sold);
         validatePrices(sold);
         validatePaymentForm(sold);
@@ -57,6 +58,44 @@ public class SoldValidator {
         if (distinctCount != sold.getBookIds().size()) {
             throw new IllegalArgumentException("Lista de livros contém IDs duplicados");
         }
+    }
+
+    private void calculateAndValidatePrices(Sold sold) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (UUID bookId : sold.getBookIds()) {
+            Optional<Book> bookOpt = bookRepository.findById(bookId);
+            if (bookOpt.isPresent()) {
+                Book book = bookOpt.get();
+                subtotal = subtotal.add(book.getPrice());
+            }
+        }
+
+        sold.setSubtotal(subtotal);
+
+        BigDecimal discount = sold.getDiscount();
+        if (discount == null) {
+            discount = BigDecimal.ZERO;
+            sold.setDiscount(discount);
+        }
+
+        if (discount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Desconto não pode ser negativo");
+        }
+
+        if (discount.compareTo(subtotal) > 0) {
+            throw new IllegalArgumentException(
+                    "Desconto (R$$ " + discount + ") não pode ser maior que o subtotal (R$$ " + subtotal + ")"
+            );
+        }
+
+        BigDecimal finalPrice = subtotal.subtract(discount);
+
+        if (finalPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Preço final deve ser maior que zero");
+        }
+
+        sold.setFinalPrice(finalPrice);
     }
 
     private void validateCustomer(Sold sold) {
