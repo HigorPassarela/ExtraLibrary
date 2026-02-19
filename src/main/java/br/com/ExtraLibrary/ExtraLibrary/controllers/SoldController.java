@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/sold")
@@ -90,5 +92,22 @@ public class SoldController {
                 .toList();
 
         return ResponseEntity.ok(soldResponses);
+    }
+
+    @GetMapping("/customer/{customerId}")
+    @Operation(summary = "Get sales by customers", description = "Endpoint for get sales from specific customer")
+    public ResponseEntity<Object> getSalesByCustomer(@Parameter(description = "Customer ID", required = true) @PathVariable("customerId") String customerId) {
+        try {
+            UUID customerUUID = UUID.fromString(customerId);
+            List<Sold> solds = service.getSalesByCustomer(customerUUID);
+            List<SoldResponse> soldResponses = solds.stream()
+                    .map(mapper::toDTO)
+                    .toList();
+
+            return ResponseEntity.ok(soldResponses);
+        } catch (IllegalArgumentException e) {
+            var error = ErrorResponse.badrequest(e.getMessage());
+            return ResponseEntity.status(error.status()).body(error);
+        }
     }
 }
