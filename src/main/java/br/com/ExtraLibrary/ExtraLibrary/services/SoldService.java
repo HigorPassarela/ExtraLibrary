@@ -7,6 +7,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -26,17 +28,37 @@ public class SoldService {
     public Sold save(Sold sold) {
         validator.valid(sold);
 
-        processBookSales(sold.getBookIds());
+        processBookSales(sold.getBooksQuantity());
 
         return repository.save(sold);
     }
 
-    private void processBookSales(List<UUID> bookIds) {
-        for (UUID bookId : bookIds) {
+    @Transactional
+    public Optional<Sold> getForId(Long id) {
+        return repository.findById(id);
+    }
+
+    @Transactional
+    public List<Sold> getAll() {
+        return repository.findAll();
+    }
+
+    private void processBookSales(Map<UUID, Long> booksQuantity) {
+        for (Map.Entry<UUID, Long> entry : booksQuantity.entrySet()) {
             try {
-                bookService.sellBookStock(bookId, 1L); // Vender 1 unidade de cada livro
+                bookService.sellBookStock(entry.getKey(), entry.getValue());
             } catch (Exception e) {
-                throw new IllegalArgumentException("Erro ao processar venda do livro " + bookId + ": " + e.getMessage());
+                throw new IllegalArgumentException("Erro ao processar venda do livro " + entry.getKey() + ": " + e.getMessage());
+            }
+        }
+    }
+
+    private void reverseBookSales(Map<UUID, Long> booksQuantity) {
+        for (Map.Entry<UUID, Long> entry : booksQuantity.entrySet()) {
+            try {
+                bookService.addBookStock(entry.getKey(), entry.getValue());
+            } catch (Exception e) {
+                System.err.println("Erro ao reverter estoque do livro " + entry.getKey() + ": " + e.getMessage());
             }
         }
     }

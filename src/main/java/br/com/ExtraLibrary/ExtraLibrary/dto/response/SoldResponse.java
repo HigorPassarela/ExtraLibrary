@@ -4,7 +4,7 @@ import br.com.ExtraLibrary.ExtraLibrary.models.enums.FormPayment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record SoldResponse(
@@ -12,7 +12,7 @@ public record SoldResponse(
         UUID customerId,
         String customerName,
         String customerEmail,
-        List<BookSummary> books,
+        Map<BookSummary, Long> books,
         BigDecimal subtotal,
         BigDecimal discount,
         BigDecimal finalPrice,

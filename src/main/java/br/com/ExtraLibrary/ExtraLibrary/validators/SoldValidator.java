@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -123,11 +124,22 @@ public class SoldValidator {
     }
 
     private void validateBooks(Sold sold) {
+        if (sold.getBooksQuantity() == null || sold.getBooksQuantity().isEmpty()) {
+            throw new IllegalArgumentException("Venda deve conter pelo menos um livro");
+        }
+
         BigDecimal calculatedSubtotal = BigDecimal.ZERO;
 
-        for (UUID bookId : sold.getBookIds()) {
+        for (Map.Entry<UUID, Long> entry : sold.getBooksQuantity().entrySet()) {
+            UUID bookId = entry.getKey();
+            Long quantity = entry.getValue();
+
             if (bookId == null) {
                 throw new IllegalArgumentException("ID do livro não pode ser nulo");
+            }
+
+            if (quantity == null || quantity <= 0) {
+                throw new IllegalArgumentException("Quantidade deve ser maior que zero para o livro: " + bookId);
             }
 
             Optional<Book> bookOpt = bookRepository.findById(bookId);
@@ -137,18 +149,16 @@ public class SoldValidator {
 
             Book book = bookOpt.get();
 
-            if (book.getQuantity() == null || book.getQuantity() <= 0) {
+            if (book.getQuantity() == null || book.getQuantity() < quantity) {
                 throw new IllegalArgumentException(
-                        "Livro '" + book.getTitle() + "' está fora de estoque. Quantidade disponível: " +
-                                (book.getQuantity() != null ? book.getQuantity() : 0)
+                        "Estoque insuficiente para '" + book.getTitle() + "'. " +
+                                "Disponível: " + (book.getQuantity() != null ? book.getQuantity() : 0) +
+                                ", Solicitado: " + quantity
                 );
             }
 
-            if (book.getPrice() == null || book.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Livro '" + book.getTitle() + "' não possui preço válido");
-            }
-
-            calculatedSubtotal = calculatedSubtotal.add(book.getPrice());
+            BigDecimal itemTotal = book.getPrice().multiply(BigDecimal.valueOf(quantity));
+            calculatedSubtotal = calculatedSubtotal.add(itemTotal);
         }
 
         sold.setSubtotal(calculatedSubtotal);
