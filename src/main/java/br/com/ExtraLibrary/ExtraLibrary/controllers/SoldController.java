@@ -7,6 +7,7 @@ import br.com.ExtraLibrary.ExtraLibrary.exception.DuplicatedRegisterException;
 import br.com.ExtraLibrary.ExtraLibrary.exception.ResourceNotFoundException;
 import br.com.ExtraLibrary.ExtraLibrary.mappers.SoldMapper;
 import br.com.ExtraLibrary.ExtraLibrary.models.Sold;
+import br.com.ExtraLibrary.ExtraLibrary.models.enums.FormPayment;
 import br.com.ExtraLibrary.ExtraLibrary.services.SoldService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -110,4 +111,65 @@ public class SoldController {
             return ResponseEntity.status(error.status()).body(error);
         }
     }
+
+    @GetMapping("/sold/{paymentMethod}/stats")
+    @Operation(summary = "Get sales by PaymentMethod", description = "Endpoint for get sales by specific PaymentForm")
+    public ResponseEntity<Object> getPaymentMethodStats(@Parameter(description = "Form Payment", required = true) @PathVariable("paymentMethod") String paymentMethod) {
+        try {
+            FormPayment formPayment = FormPayment.valueOf(paymentMethod.toUpperCase());
+            List<Sold> sales = service.getSalesByPaymentMethod(formPayment);
+            List<SoldResponse> responses = sales.stream()
+                    .map(mapper::toDTO)
+                    .toList();
+
+            return ResponseEntity.ok(responses);
+        } catch (IllegalArgumentException e) {
+            var error = ErrorResponse.badrequest("Forma de pagamento inválida. Use: CASH, CREDIT_CARD, DEBIT_CARD, PIX, BANK_TRANSFER");
+            return ResponseEntity.status(error.status()).body(error);
+        }
+    }
+
+    @GetMapping("/customer/{customerId}/stats")
+    @Operation(summary = "Customers statistics", description = "Endpoint for return sales count and total sales by customer")
+    public ResponseEntity<Object> getCustomerStats(@Parameter(description = "CustomerID", required = true) @PathVariable("customerId") String customerId) {
+        try {
+
+            UUID customerUUID = UUID.fromString(customerId);
+            long salesCount = service.countSalesByCustomer(customerUUID);
+            BigDecimal totalValue = service.getTotalSalesByCustomer(customerUUID);
+
+            var stats = new CustomerSalesStats(customerUUID, salesCount, totalValue);
+            return ResponseEntity.ok(stats);
+        } catch (IllegalArgumentException e) {
+            var error = ErrorResponse.badrequest(e.getMessage());
+            return ResponseEntity.status(error.status()).body(error);
+        }
+
+    }
+
+    public static class CustomerSalesStats {
+        private final UUID customerId;
+        private final long salesCount;      // Resultado do countSalesByCustomer()
+        private final BigDecimal totalValue; // Resultado do getTotalSalesByCustomer()
+
+        public CustomerSalesStats(UUID customerId, long salesCount, BigDecimal totalValue) {
+            this.customerId = customerId;
+            this.salesCount = salesCount;
+            this.totalValue = totalValue;
+        }
+
+        // Getters
+        public UUID getCustomerId() {
+            return customerId;
+        }
+
+        public long getSalesCount() {
+            return salesCount;
+        }
+
+        public BigDecimal getTotalValue() {
+            return totalValue;
+        }
+    }
+
 }
