@@ -39,4 +39,6 @@ public interface SoldRepository extends JpaRepository<Sold, Long> {
     List<Sold> findTop10ByOrderByDateSaleDesc();
 
     List<Sold> findTop10ByOrderByFinalPriceDesc();
+
+    long countByCustomerId(UUID customerId);
 }

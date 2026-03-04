@@ -13,20 +13,26 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Table(name = "sold")
+@Builder
 public class Sold {
 
     @Id
@@ -35,6 +41,7 @@ public class Sold {
     @Column(name = "id")
     private Long id;
 
+    @CreationTimestamp
     @Column(name = "date_sale", nullable = false)
     private LocalDateTime dateSale;
 
@@ -51,6 +58,7 @@ public class Sold {
     @Column(name = "form_payment", nullable = false)
     private FormPayment formPayment;
 
+    @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -59,16 +67,17 @@ public class Sold {
     private Customer customer;
 
     @ElementCollection
-    @CollectionTable(name = "sold_book_ids", joinColumns = @JoinColumn(name = "sold_id"))
-    @Column(name = "book_id")
-    private List<UUID> bookIds = new ArrayList<>();
+    @CollectionTable(name = "sold_book_quantities", joinColumns = @JoinColumn(name = "sold_id"))
+    @MapKeyColumn(name = "book_id")
+    @Column(name = "quantity")
+    private Map<UUID, Long> booksQuantity = new HashMap<>();
 
     //constructor
     public Sold() {
     }
 
     //constructor complete
-    public Sold(Long id, LocalDateTime dateSale, BigDecimal subtotal, BigDecimal discount, BigDecimal finalPrice, FormPayment formPayment, LocalDateTime createdAt, Customer customer, List<UUID> bookIds) {
+    public Sold(Long id, LocalDateTime dateSale, BigDecimal subtotal, BigDecimal discount, BigDecimal finalPrice, FormPayment formPayment, LocalDateTime createdAt, Customer customer, Map<UUID, Long> booksQuantity) {
         this.id = id;
         this.dateSale = dateSale;
         this.subtotal = subtotal;
@@ -77,7 +86,7 @@ public class Sold {
         this.formPayment = formPayment;
         this.createdAt = createdAt;
         this.customer = customer;
-        this.bookIds = bookIds;
+        this.booksQuantity = booksQuantity;
     }
 
     @PrePersist
@@ -85,19 +94,10 @@ public class Sold {
         if (dateSale == null) {
             dateSale = LocalDateTime.now();
         }
-        calculateFinalPrice();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        calculateFinalPrice();
-    }
-
-    private void calculateFinalPrice() {
-        if (subtotal != null) {
-            BigDecimal discountAmount = discount != null ? discount : BigDecimal.ZERO;
-            finalPrice = subtotal.subtract(discountAmount);
-        }
     }
 
     //getters and setters
@@ -165,12 +165,16 @@ public class Sold {
         this.customer = customer;
     }
 
-    public List<UUID> getBookIds() {
-        return bookIds;
+    public Map<UUID, Long> getBooksQuantity() {
+        return booksQuantity;
     }
 
-    public void setBookIds(List<UUID> bookIds) {
-        this.bookIds = bookIds;
+    public void setBooksQuantity(Map<UUID, Long> booksQuantity) {
+        this.booksQuantity = booksQuantity;
+    }
+
+    public List<UUID> getBookIds() {
+        return new ArrayList<>(booksQuantity.keySet());
     }
 
     //hash and equal
@@ -178,12 +182,12 @@ public class Sold {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Sold sold = (Sold) o;
-        return Objects.equals(id, sold.id) && Objects.equals(dateSale, sold.dateSale) && Objects.equals(subtotal, sold.subtotal) && Objects.equals(discount, sold.discount) && Objects.equals(finalPrice, sold.finalPrice) && formPayment == sold.formPayment && Objects.equals(createdAt, sold.createdAt) && Objects.equals(customer, sold.customer) && Objects.equals(bookIds, sold.bookIds);
+        return Objects.equals(id, sold.id) && Objects.equals(dateSale, sold.dateSale) && Objects.equals(subtotal, sold.subtotal) && Objects.equals(discount, sold.discount) && Objects.equals(finalPrice, sold.finalPrice) && formPayment == sold.formPayment && Objects.equals(createdAt, sold.createdAt) && Objects.equals(customer, sold.customer) && Objects.equals(booksQuantity, sold.booksQuantity);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, dateSale, subtotal, discount, finalPrice, formPayment, createdAt, customer, bookIds);
+        return Objects.hash(id, dateSale, subtotal, discount, finalPrice, formPayment, createdAt, customer, booksQuantity);
     }
 
     //toString
@@ -198,7 +202,7 @@ public class Sold {
                 ", formPayment=" + formPayment +
                 ", createdAt=" + createdAt +
                 ", customer=" + customer +
-                ", bookIds=" + bookIds +
+                ", booksQuantity=" + booksQuantity +
                 '}';
     }
 }
