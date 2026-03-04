@@ -11,18 +11,13 @@ import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerStatus;
 import br.com.ExtraLibrary.ExtraLibrary.services.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -32,19 +27,22 @@ import java.util.UUID;
 @RestController
 @RequestMapping("api/v1/customer")
 @Tag(name = "Customer Manager", description = "Manager for register Customers")
+@SecurityRequirement(name = "Bearer Authentication")
 public class CustomerController {
 
     private final CustomerService service;
+    private final PasswordEncoder passwordEncoder;
 
-    public CustomerController(CustomerService service) {
+    public CustomerController(CustomerService service, PasswordEncoder passwordEncoder) {
         this.service = service;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping
-    @Operation(summary = "Create/Register new Customer", description = "Endpoint for register customers")
+    @Operation(summary = "Create/Register new Customer", description = "Endpoint for register customers with encrypted password")
     public ResponseEntity<Object> save(@RequestBody @Valid CustomerRequest customerRequest) {
         try {
-            Customer customer = CustomerMapper.toEntity(customerRequest);
+            Customer customer = CustomerMapper.toEntity(customerRequest, passwordEncoder);
             service.save(customer);
 
             URI location = ServletUriComponentsBuilder
@@ -66,8 +64,8 @@ public class CustomerController {
     public ResponseEntity<Object> update(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id, @RequestBody CustomerRequest customerRequest) {
         try {
             UUID customerId = UUID.fromString(id);
-            Customer customer = CustomerMapper.toEntity(customerRequest);
-            service.update(customerId,customer);
+            Customer customer = CustomerMapper.toEntity(customerRequest, passwordEncoder);
+            service.update(customerId, customer);
 
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -206,7 +204,8 @@ public class CustomerController {
 
     @PatchMapping("/{id}/activate")
     @Operation(summary = "Activate customer", description = "Endpoint for Activate customer status")
-    public ResponseEntity<Object> activateCustomer(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id){
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Object> activateCustomer(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
             service.activateCustomer(customerId);
@@ -222,6 +221,7 @@ public class CustomerController {
 
     @PatchMapping("/{id}/block")
     @Operation(summary = "Block customer", description = "Endpoint for Block customer status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> blockCustomer(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
@@ -238,6 +238,7 @@ public class CustomerController {
 
     @PatchMapping("/{id}/disable")
     @Operation(summary = "Disable customer", description = "Endpoint for Disable customer status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> disableCustomer(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
@@ -254,6 +255,7 @@ public class CustomerController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete customer", description = "Endpoint for delete customer")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> delete(@Parameter(description = "Customer ID", required = true) @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);

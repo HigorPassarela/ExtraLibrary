@@ -2,10 +2,12 @@ package br.com.ExtraLibrary.ExtraLibrary.services;
 
 import br.com.ExtraLibrary.ExtraLibrary.exception.ResourceNotFoundException;
 import br.com.ExtraLibrary.ExtraLibrary.models.Customer;
+import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerRole;
 import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerStatus;
 import br.com.ExtraLibrary.ExtraLibrary.repository.CustomerRepository;
 import br.com.ExtraLibrary.ExtraLibrary.validators.CustomerValidator;
 import jakarta.transaction.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,16 +19,26 @@ public class CustomerService {
 
     private final CustomerRepository repository;
     private final CustomerValidator validator;
+    private final PasswordEncoder passwordEncoder;
 
-    public CustomerService(CustomerRepository repository, CustomerValidator validator) {
+    public CustomerService(CustomerRepository repository, CustomerValidator validator, PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.validator = validator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     public Customer save(Customer customer) {
         if (customer.getStatus() == null) {
             customer.setStatus(CustomerStatus.ACTIVE);
+        }
+        if (customer.getRole() == null) {
+            customer.setRole(CustomerRole.CUSTOMER);
+        }
+
+        // Se a senha não estiver criptografada, criptografar
+        if (customer.getPassword() != null && !customer.getPassword().startsWith("$2a$")) {
+            customer.setPassword(passwordEncoder.encode(customer.getPassword()));
         }
 
         validator.valid(customer);
@@ -42,6 +54,17 @@ public class CustomerService {
 
         if (customerUpdated.getStatus() == null) {
             customerUpdated.setStatus(customerExisting.getStatus());
+        }
+        if (customerUpdated.getRole() == null) {
+            customerUpdated.setRole(customerExisting.getRole());
+        }
+
+        // Se uma nova senha foi fornecida, criptografar
+        if (customerUpdated.getPassword() != null && !customerUpdated.getPassword().startsWith("$2a$")) {
+            customerUpdated.setPassword(passwordEncoder.encode(customerUpdated.getPassword()));
+        } else if (customerUpdated.getPassword() == null) {
+            // Manter a senha existente se nenhuma nova foi fornecida
+            customerUpdated.setPassword(customerExisting.getPassword());
         }
 
         validator.valid(customerUpdated);

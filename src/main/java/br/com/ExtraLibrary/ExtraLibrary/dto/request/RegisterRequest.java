@@ -8,7 +8,7 @@ import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
-public record CustomerRequest(
+public record RegisterRequest(
         @NotBlank(message = "Campo name é obrigatório!")
         String name,
 
@@ -21,7 +21,7 @@ public record CustomerRequest(
         String password,
 
         @CPF(message = "CPF deve ser válido!")
-        String cpf, // Opcional
+        String cpf, // Opcional no seu schema
 
         @NotBlank(message = "Campo phone é obrigatório!")
         String phone,
