@@ -105,7 +105,6 @@ public class AuthorController {
     // ✅ Listar todos os autores - todos os usuários autenticados
     @GetMapping
     @Operation(summary = "List all authors", description = "Endpoint for list all authors")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<AuthorResponse>> getAll() {
         List<Author> authors = service.getAll();
         List<AuthorResponse> authorResponses = authors.stream()
@@ -118,7 +117,6 @@ public class AuthorController {
     // ✅ Buscar por nome - todos os usuários autenticados
     @GetMapping("/name")
     @Operation(summary = "Find authors from name", description = "Endpoint for list authors from your names")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<AuthorResponse>> findByName(
             @Parameter(description = "Name", required = true) @RequestParam("name") String name) {
         try {
@@ -137,7 +135,6 @@ public class AuthorController {
     // ✅ Buscar por nacionalidade - todos os usuários autenticados
     @GetMapping("/nacionality")
     @Operation(summary = "Find authors from nacionality", description = "Endpoint for list authors from your nacionality")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<AuthorResponse>> findByNacionality(
             @Parameter(description = "Nacionality", required = true) @RequestParam("nacionality") String nacionality) {
         try {

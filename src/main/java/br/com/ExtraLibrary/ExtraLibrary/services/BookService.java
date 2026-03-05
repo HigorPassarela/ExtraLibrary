@@ -59,7 +59,6 @@ public class BookService {
     }
 
     @Transactional
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Book> getAll() {
         return repository.findAll();
     }

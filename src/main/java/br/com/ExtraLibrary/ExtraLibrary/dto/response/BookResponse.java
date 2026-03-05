@@ -15,6 +15,8 @@ public record BookResponse(
         BookGender gender,
         BigDecimal price,
         Long quantity,
-        BookStatus bookStatus
+        BookStatus bookStatus,
+        UUID authorId,
+        String authorName
 ) {
 }

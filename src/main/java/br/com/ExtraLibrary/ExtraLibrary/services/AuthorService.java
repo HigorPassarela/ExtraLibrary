@@ -41,21 +41,18 @@ public class AuthorService {
 
     // ✅ Todos podem listar autores
     @Transactional
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Author> getAll() {
         return repository.findAll();
     }
 
     // ✅ Todos podem buscar por nome
     @Transactional
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Author> findByName(String name) {
         return repository.findByName(name);
     }
 
     // ✅ Todos podem buscar por nacionalidade
     @Transactional
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Author> findByNacionality(String nacionality) {
         return repository.findByNacionality(nacionality);
     }

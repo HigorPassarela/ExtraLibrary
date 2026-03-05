@@ -81,7 +81,6 @@ public class BookController {
 
     @GetMapping
     @Operation(summary = "Get all Details", description = "Endpoint for Get all books details")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<BookResponse>> getAll() {
         List<Book> books = service.getAll();
         List<BookResponse> bookResponses = books.stream()
