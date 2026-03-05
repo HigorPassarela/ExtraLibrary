@@ -1,7 +1,6 @@
 package br.com.ExtraLibrary.ExtraLibrary.dto.request;
 
 import br.com.ExtraLibrary.ExtraLibrary.models.enums.BookGender;
-import br.com.ExtraLibrary.ExtraLibrary.models.enums.BookStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.ISBN;

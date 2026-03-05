@@ -6,6 +6,7 @@ import br.com.ExtraLibrary.ExtraLibrary.models.Book;
 import br.com.ExtraLibrary.ExtraLibrary.repository.AuthorRepository;
 import br.com.ExtraLibrary.ExtraLibrary.validators.AuthorValidator;
 import jakarta.transaction.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,33 +24,45 @@ public class AuthorService {
         this.validator = validator;
     }
 
+    // ✅ Apenas ADMIN/LIBRARIAN podem criar autores
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public Author save(Author author) {
         validator.valid(author);
         return repository.save(author);
     }
 
+    // ✅ Todos podem consultar por ID
     @Transactional
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public Optional<Author> getForId(UUID id) {
         return repository.findById(id);
     }
 
+    // ✅ Todos podem listar autores
     @Transactional
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Author> getAll() {
         return repository.findAll();
     }
 
+    // ✅ Todos podem buscar por nome
     @Transactional
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Author> findByName(String name) {
         return repository.findByName(name);
     }
 
+    // ✅ Todos podem buscar por nacionalidade
     @Transactional
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public List<Author> findByNacionality(String nacionality) {
         return repository.findByNacionality(nacionality);
     }
 
+    // ✅ Apenas ADMIN/LIBRARIAN podem ver estatísticas
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public AuthorStats getAuthorStats(UUID id) {
         Author author = getForId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Autor com id: " + id + " não encontrado!"));
@@ -62,7 +75,9 @@ public class AuthorService {
         return new AuthorStats(author.getName(), totalBooks, totalQuantity);
     }
 
+    // ✅ Apenas ADMIN/LIBRARIAN podem atualizar
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public Author update(UUID id, Author authorUpdate) {
         Author existingAuthor = getForId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Autor com id: " + id + " não encontrado!"));
@@ -75,18 +90,22 @@ public class AuthorService {
         return repository.save(authorUpdate);
     }
 
+    // ✅ Apenas ADMIN pode deletar
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(UUID id) {
         Author author = getForId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Autor com id: " + id + " não encontrado!"));
 
         if (!author.getBooks().isEmpty()) {
-            throw new IllegalArgumentException("Não é possivel deletar autor que possui livros cadastrados" + "Total de livros: " + author.getBooks().size());
+            throw new IllegalArgumentException("Não é possível deletar autor que possui livros cadastrados. " +
+                    "Total de livros: " + author.getBooks().size());
         }
 
         repository.delete(author);
     }
 
+    // ✅ Classe interna para estatísticas
     public static class AuthorStats {
         private final String authorName;
         private final int totalBooks;
@@ -101,9 +120,11 @@ public class AuthorService {
         public String getAuthorName() {
             return authorName;
         }
+
         public int getTotalBooks() {
             return totalBooks;
         }
+
         public long getTotalQuantityBooksInStock() {
             return totalQuantityBooksInStock;
         }

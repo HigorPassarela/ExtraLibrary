@@ -10,18 +10,12 @@ import br.com.ExtraLibrary.ExtraLibrary.models.Author;
 import br.com.ExtraLibrary.ExtraLibrary.services.AuthorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -31,6 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("api/v1/author")
 @Tag(name = "Author Manager", description = "Manager for register Authors")
+@SecurityRequirement(name = "Bearer Authentication") // ✅ Requer autenticação
 public class AuthorController {
 
     private final AuthorService service;
@@ -39,17 +34,19 @@ public class AuthorController {
         this.service = service;
     }
 
+    // ✅ Criar autor - apenas ADMIN/LIBRARIAN
     @PostMapping
-    @Operation(summary = "Create/Register new Author", description = "Endpoint for register Authors")
+    @Operation(summary = "Create/Register new Author", description = "Endpoint for register Authors - ADMIN/LIBRARIAN only")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> save(@RequestBody @Valid AuthorRequest authorRequest) {
         try {
             Author author = AuthorMapper.toEntity(authorRequest);
-            service.save(author);
+            Author saved = service.save(author);
 
             URI location = ServletUriComponentsBuilder
                     .fromCurrentRequest()
                     .path("/{id}")
-                    .buildAndExpand(author.getId())
+                    .buildAndExpand(saved.getId())
                     .toUri();
 
             return ResponseEntity.created(location).build();
@@ -59,9 +56,13 @@ public class AuthorController {
         }
     }
 
+    // ✅ Atualizar autor - apenas ADMIN/LIBRARIAN
     @PutMapping("/{id}")
-    @Operation(summary = "Update author", description = "Endpoint for updated stats from specific author")
-    public ResponseEntity<Object> update(@Parameter(description = "Author ID", required = true) @PathVariable("id") String id, @RequestBody @Valid AuthorRequest authorRequest) {
+    @Operation(summary = "Update author", description = "Endpoint for updated author details - ADMIN/LIBRARIAN only")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<Object> update(
+            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id,
+            @RequestBody @Valid AuthorRequest authorRequest) {
         try {
             UUID authorId = UUID.fromString(id);
             Author author = AuthorMapper.toEntity(authorRequest);
@@ -80,8 +81,10 @@ public class AuthorController {
         }
     }
 
-    @GetMapping("{id}")
-    @Operation(summary = "Get details from id", description = "Endpoint for Get authors details ")
+    // ✅ Buscar autor por ID - todos os usuários autenticados
+    @GetMapping("/{id}")
+    @Operation(summary = "Get details from id", description = "Endpoint for Get authors details")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<AuthorResponse> getDetailsFromId(@PathVariable("id") String id) {
         try {
             UUID idAuthor = UUID.fromString(id);
@@ -99,8 +102,10 @@ public class AuthorController {
         }
     }
 
+    // ✅ Listar todos os autores - todos os usuários autenticados
     @GetMapping
     @Operation(summary = "List all authors", description = "Endpoint for list all authors")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<AuthorResponse>> getAll() {
         List<Author> authors = service.getAll();
         List<AuthorResponse> authorResponses = authors.stream()
@@ -110,9 +115,12 @@ public class AuthorController {
         return ResponseEntity.ok(authorResponses);
     }
 
+    // ✅ Buscar por nome - todos os usuários autenticados
     @GetMapping("/name")
     @Operation(summary = "Find authors from name", description = "Endpoint for list authors from your names")
-    public ResponseEntity<List<AuthorResponse>> findByName(@Parameter(description = "Name", required = true) @RequestParam("name") String name) {
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<List<AuthorResponse>> findByName(
+            @Parameter(description = "Name", required = true) @RequestParam("name") String name) {
         try {
             List<Author> authors = service.findByName(name);
             List<AuthorResponse> authorResponses = authors.stream()
@@ -126,9 +134,12 @@ public class AuthorController {
         }
     }
 
+    // ✅ Buscar por nacionalidade - todos os usuários autenticados
     @GetMapping("/nacionality")
     @Operation(summary = "Find authors from nacionality", description = "Endpoint for list authors from your nacionality")
-    public ResponseEntity<List<AuthorResponse>> findByNacionality(@Parameter(description = "Nacionality", required = true) @RequestParam("nacionality") String nacionality) {
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<List<AuthorResponse>> findByNacionality(
+            @Parameter(description = "Nacionality", required = true) @RequestParam("nacionality") String nacionality) {
         try {
             List<Author> authors = service.findByNacionality(nacionality);
             List<AuthorResponse> authorResponses = authors.stream()
@@ -142,9 +153,12 @@ public class AuthorController {
         }
     }
 
+    // ✅ Estatísticas do autor - apenas ADMIN/LIBRARIAN
     @GetMapping("/{id}/stats")
-    @Operation(summary = "Find authors stats/books from id", description = "Endpoint for list authors stats from id")
-    public ResponseEntity<Object> getAuthorStats(@Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
+    @Operation(summary = "Find authors stats/books from id", description = "Endpoint for list authors stats from id - ADMIN/LIBRARIAN only")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<Object> getAuthorStats(
+            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
         try {
             UUID authorId = UUID.fromString(id);
             AuthorService.AuthorStats stats = service.getAuthorStats(authorId);
@@ -159,9 +173,12 @@ public class AuthorController {
         }
     }
 
+    // ✅ Livros do autor - todos os usuários autenticados
     @GetMapping("/{id}/books")
-    @Operation(summary = "Find book of author", description = "Find all books from specific author")
-    public ResponseEntity<AuthorResponse> getAuthorBooks(@Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
+    @Operation(summary = "Find books of author", description = "Find all books from specific author")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<AuthorResponse> getAuthorBooks(
+            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
         try {
             UUID authorId = UUID.fromString(id);
 
@@ -178,14 +195,17 @@ public class AuthorController {
         }
     }
 
+    // ✅ Deletar autor - apenas ADMIN
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete author", description = "Delete specific author from id")
-    public ResponseEntity<Object> delete(@Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
+    @Operation(summary = "Delete author", description = "Delete specific author from id - ADMIN only")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Object> delete(
+            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
         try {
             UUID authorId = UUID.fromString(id);
             service.delete(authorId);
 
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.noContent().build(); // ✅ Corrigido: deve retornar 204 No Content
         } catch (IllegalArgumentException e) {
             var error = ErrorResponse.badrequest(e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
