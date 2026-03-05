@@ -1,24 +1,38 @@
 package br.com.ExtraLibrary.ExtraLibrary.dto.error;
 
-import org.springframework.http.HttpStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 public record ErrorResponse(
         int status,
+        String error,
         String message,
-        List<ErrorField> errors
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        LocalDateTime timestamp
 ) {
 
-    public static ErrorResponse badrequest(String mensagem) {
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), mensagem, List.of());
+    public static ErrorResponse badrequest(String message) {
+        return new ErrorResponse(400, "Bad Request", message, LocalDateTime.now());
     }
 
-    public static ErrorResponse conflict(String mensagem) {
-        return new ErrorResponse(HttpStatus.CONFLICT.value(), mensagem, List.of());
+    public static ErrorResponse unauthorized(String message) {
+        return new ErrorResponse(401, "Unauthorized", message, LocalDateTime.now());
     }
 
-    public static ErrorResponse notFound(String mensagem) {
-        return new ErrorResponse(HttpStatus.NOT_FOUND.value(), mensagem, List.of());
+    public static ErrorResponse forbidden(String message) {
+        return new ErrorResponse(403, "Forbidden", message, LocalDateTime.now());
+    }
+
+    public static ErrorResponse notFound(String message) {
+        return new ErrorResponse(404, "Not Found", message, LocalDateTime.now());
+    }
+
+    public static ErrorResponse conflict(String message) {
+        return new ErrorResponse(409, "Conflict", message, LocalDateTime.now());
+    }
+
+    public static ErrorResponse internalServerError(String message) {
+        return new ErrorResponse(500, "Internal Server Error", message, LocalDateTime.now());
     }
 }

@@ -6,6 +6,9 @@ import br.com.ExtraLibrary.ExtraLibrary.models.enums.FormPayment;
 import br.com.ExtraLibrary.ExtraLibrary.repository.SoldRepository;
 import br.com.ExtraLibrary.ExtraLibrary.validators.SoldValidator;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,6 +20,8 @@ import java.util.UUID;
 
 @Service
 public class SoldService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SoldService.class);
 
     private final SoldRepository repository;
     private final SoldValidator validator;
@@ -30,108 +35,164 @@ public class SoldService {
 
     @Transactional
     public Sold save(Sold sold) {
-        validator.valid(sold);
+        return save(sold, null);
+    }
 
-        processBookSales(sold.getBooksQuantity());
+    @Transactional
+    public Sold save(Sold sold, Authentication authentication) {
+        try {
+            // 🔐 Validar autenticação se fornecida
+            if (authentication != null) {
+                validator.validateAuthentication(authentication);
+                logger.debug("Authentication validated for user: {}", authentication.getName());
+            }
 
-        return repository.save(sold);
+            // ✅ Validar dados da venda
+            validator.valid(sold);
+
+            // 📦 Processar estoque dos livros
+            processBookSales(sold.getBooksQuantity());
+
+            // 💾 Salvar venda
+            Sold savedSold = repository.save(sold);
+
+            logger.info("Sale {} saved successfully for customer {} with total value {}",
+                    savedSold.getId(),
+                    savedSold.getCustomer().getId(),
+                    savedSold.getFinalPrice());
+
+            return savedSold;
+
+        } catch (Exception e) {
+            logger.error("Error saving sale for customer {}: {}",
+                    sold.getCustomer() != null ? sold.getCustomer().getId() : "unknown",
+                    e.getMessage());
+            throw e;
+        }
     }
 
     @Transactional
     public Optional<Sold> getForId(Long id) {
+        logger.debug("Retrieving sale with ID: {}", id);
         return repository.findById(id);
     }
 
     @Transactional
     public List<Sold> getAll() {
+        logger.debug("Retrieving all sales");
         return repository.findAll();
     }
 
     @Transactional
     public List<Sold> getSalesByCustomer(UUID customerId) {
+        logger.debug("Retrieving sales for customer: {}", customerId);
         return repository.findByCustomerId(customerId);
     }
 
     @Transactional
     public List<Sold> getSalesByCustomerAndPeriod(UUID customerId, LocalDateTime startDate, LocalDateTime endDate) {
+        logger.debug("Retrieving sales for customer {} between {} and {}", customerId, startDate, endDate);
         return repository.findByCustomerIdAndDateSaleBetween(customerId, startDate, endDate);
     }
 
     @Transactional
     public long countSalesByCustomer(UUID customerId) {
+        logger.debug("Counting sales for customer: {}", customerId);
         return repository.countByCustomerId(customerId);
     }
 
     @Transactional
     public BigDecimal getTotalSalesByCustomer(UUID customerId) {
+        logger.debug("Calculating total sales value for customer: {}", customerId);
         BigDecimal total = repository.sumTotalSalesByCustomer(customerId);
         return total != null ? total : BigDecimal.ZERO;
     }
 
     @Transactional
     public List<Sold> getSalesByPaymentMethod(FormPayment formPayment) {
+        logger.debug("Retrieving sales by payment method: {}", formPayment);
         return repository.findByFormPayment(formPayment);
     }
 
-//    @Transactional
-//    public List<Sold> getCashSales() {
-//        return getSalesByPaymentMethod(FormPayment.CASH);
-//    }
-//
-//    @Transactional
-//    public List<Sold> getDebitSales() {
-//        return getSalesByPaymentMethod(FormPayment.DEBIT_CARD);
-//    }
-//
-//    @Transactional
-//    public List<Sold> getCreditSales() {
-//        return getSalesByPaymentMethod(FormPayment.CREDIT_CARD);
-//    }
-//
-//    @Transactional
-//    public List<Sold> getPixSales() {
-//        return getSalesByPaymentMethod(FormPayment.PIX);
-//    }
-//
-//    @Transactional
-//    public List<Sold> getBankTransferSales() {
-//        return getSalesByPaymentMethod(FormPayment.BANK_TRANSFER);
-//    }
-
     @Transactional
     public Sold update(Long id, Sold soldUpdate) {
-        Sold existingSold = getForId(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Venda com id: " + id + " não encontrada!"));
+        return update(id, soldUpdate, null);
+    }
 
-        validator.validateUpdate(existingSold);
+    @Transactional
+    public Sold update(Long id, Sold soldUpdate, Authentication authentication) {
+        try {
+            // 🔐 Validar autenticação se fornecida
+            if (authentication != null) {
+                validator.validateAuthentication(authentication);
+                logger.debug("Authentication validated for update by user: {}", authentication.getName());
+            }
 
-        reverseBookSales(existingSold.getBooksQuantity());
+            // 🔍 Buscar venda existente
+            Sold existingSold = getForId(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Venda com id: " + id + " não encontrada!"));
 
-        soldUpdate.setId(id);
+            // ✅ Validar se pode ser atualizada
+            validator.validateUpdate(existingSold);
 
-        validator.valid(soldUpdate);
+            // 🔄 Reverter estoque da venda original
+            reverseBookSales(existingSold.getBooksQuantity());
 
-        processBookSales(soldUpdate.getBooksQuantity());
+            // 🆔 Manter ID
+            soldUpdate.setId(id);
 
-        return repository.save(soldUpdate);
+            // ✅ Validar nova venda
+            validator.valid(soldUpdate);
+
+            // 📦 Processar novo estoque
+            processBookSales(soldUpdate.getBooksQuantity());
+
+            // 💾 Salvar atualização
+            Sold updatedSold = repository.save(soldUpdate);
+
+            logger.info("Sale {} updated successfully by user: {}",
+                    id,
+                    authentication != null ? authentication.getName() : "system");
+
+            return updatedSold;
+
+        } catch (Exception e) {
+            logger.error("Error updating sale {}: {}", id, e.getMessage());
+            throw e;
+        }
     }
 
     private void processBookSales(Map<UUID, Long> booksQuantity) {
+        logger.debug("Processing book sales for {} different books", booksQuantity.size());
+
         for (Map.Entry<UUID, Long> entry : booksQuantity.entrySet()) {
             try {
-                bookService.sellBookStock(entry.getKey(), entry.getValue());
+                UUID bookId = entry.getKey();
+                Long quantity = entry.getValue();
+
+                logger.debug("Selling {} units of book {}", quantity, bookId);
+                bookService.sellBookStock(bookId, quantity);
+
             } catch (Exception e) {
+                logger.error("Error processing sale for book {}: {}", entry.getKey(), e.getMessage());
                 throw new IllegalArgumentException("Erro ao processar venda do livro " + entry.getKey() + ": " + e.getMessage());
             }
         }
     }
 
     private void reverseBookSales(Map<UUID, Long> booksQuantity) {
+        logger.debug("Reversing book sales for {} different books", booksQuantity.size());
+
         for (Map.Entry<UUID, Long> entry : booksQuantity.entrySet()) {
             try {
-                bookService.addBookStock(entry.getKey(), entry.getValue());
+                UUID bookId = entry.getKey();
+                Long quantity = entry.getValue();
+
+                logger.debug("Reversing {} units of book {}", quantity, bookId);
+                bookService.addBookStock(bookId, quantity);
+
             } catch (Exception e) {
-                System.err.println("Erro ao reverter estoque do livro " + entry.getKey() + ": " + e.getMessage());
+                logger.warn("Error reversing stock for book {}: {}", entry.getKey(), e.getMessage());
             }
         }
     }
