@@ -28,7 +28,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@Tag(name = "🔐 Authentication", description = "Endpoints de Autenticação - Login e Registro de Usuários")
+@Tag(name = "Authentication", description = "Endpoints de Autenticação - Login e Registro de Usuários")
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
