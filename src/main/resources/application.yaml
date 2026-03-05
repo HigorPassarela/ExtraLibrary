@@ -41,6 +41,15 @@ app:
     dateBirth: "1990-01-01"
     address: "Endereço Admin"
 
+  librarian:
+    name: "Bibliotecário"
+    email: "librarian@extralibrary.com"
+    password: "lib123"
+    cpf: "11111111111"
+    phone: "11888888888"
+    dateBirth: "1985-05-15"
+    address: "Endereço Bibliotecário"
+
 logging:
   level:
     com.library: DEBUG

@@ -1,4 +1,4 @@
-package br.com.ExtraLibrary.ExtraLibrary.services;
+package br.com.ExtraLibrary.ExtraLibrary.services.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

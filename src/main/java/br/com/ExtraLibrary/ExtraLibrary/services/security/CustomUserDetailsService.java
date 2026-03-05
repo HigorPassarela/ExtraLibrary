@@ -1,4 +1,4 @@
-package br.com.ExtraLibrary.ExtraLibrary.services;
+package br.com.ExtraLibrary.ExtraLibrary.services.security;
 
 import br.com.ExtraLibrary.ExtraLibrary.repository.CustomerRepository;
 import org.springframework.security.core.userdetails.UserDetails;

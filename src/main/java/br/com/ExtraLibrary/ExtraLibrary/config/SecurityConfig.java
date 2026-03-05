@@ -1,8 +1,9 @@
 package br.com.ExtraLibrary.ExtraLibrary.config;
 
-import br.com.ExtraLibrary.ExtraLibrary.services.CustomUserDetailsService;
+import br.com.ExtraLibrary.ExtraLibrary.services.security.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -18,7 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
@@ -35,46 +36,43 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+        return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos - não requerem autenticação
-                        .requestMatchers("/api/v1/auth/register").permitAll()
-                        .requestMatchers("/api/v1/auth/login").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/swagger-ui.html").permitAll()
-                        .requestMatchers("/swagger-resources/**").permitAll()
-                        .requestMatchers("/webjars/**").permitAll()
+                        // 🟢 Endpoints públicos
+                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
 
-                        // Logout requer autenticação
-                        .requestMatchers("/api/v1/auth/logout").authenticated()
+                        // 🔴 Endpoints críticos - apenas ADMIN
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/reports/**").hasRole("ADMIN")
 
-                        // Endpoints administrativos - apenas ADMIN
+                        // 🟡 Endpoints de gestão de status - apenas ADMIN
                         .requestMatchers("/api/v1/customer/*/activate").hasRole("ADMIN")
                         .requestMatchers("/api/v1/customer/*/block").hasRole("ADMIN")
                         .requestMatchers("/api/v1/customer/*/disable").hasRole("ADMIN")
 
-                        // Endpoints que requerem autenticação - qualquer usuário logado
-                        .requestMatchers("/api/v1/customer/**").hasAnyRole("CUSTOMER", "ADMIN", "LIBRARIAN")
+                        // 🔵 Logout requer autenticação
+                        .requestMatchers("/api/v1/auth/logout").authenticated()
 
-                        // Qualquer outra requisição precisa estar autenticada
+                        // 🟠 Demais endpoints - verificação detalhada nos Services
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder); // Usa o BCrypt para verificar senhas
+        authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
 

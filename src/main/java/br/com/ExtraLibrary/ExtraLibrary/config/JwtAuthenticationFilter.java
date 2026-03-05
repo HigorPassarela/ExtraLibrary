@@ -1,6 +1,6 @@
 package br.com.ExtraLibrary.ExtraLibrary.config;
 
-import br.com.ExtraLibrary.ExtraLibrary.services.JwtService;
+import br.com.ExtraLibrary.ExtraLibrary.services.security.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

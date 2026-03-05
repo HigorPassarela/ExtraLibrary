@@ -1,4 +1,4 @@
-package br.com.ExtraLibrary.ExtraLibrary.services;
+package br.com.ExtraLibrary.ExtraLibrary.services.security;
 
 import br.com.ExtraLibrary.ExtraLibrary.models.Customer;
 import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerRole;
@@ -21,6 +21,7 @@ public class InitializationService {
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // Configurações do Admin
     @Value("${app.admin.name:Administrador}")
     private String adminName;
 
@@ -42,6 +43,28 @@ public class InitializationService {
     @Value("${app.admin.address:Endereço Admin}")
     private String adminAddress;
 
+    // Configurações do Librarian
+    @Value("${app.librarian.name:Bibliotecário}")
+    private String librarianName;
+
+    @Value("${app.librarian.email:librarian@extralibrary.com}")
+    private String librarianEmail;
+
+    @Value("${app.librarian.password:lib123}")
+    private String librarianPassword;
+
+    @Value("${app.librarian.cpf:11111111111}")
+    private String librarianCpf;
+
+    @Value("${app.librarian.phone:11888888888}")
+    private String librarianPhone;
+
+    @Value("${app.librarian.dateBirth:1985-05-15}")
+    private String librarianDateBirth;
+
+    @Value("${app.librarian.address:Endereço Bibliotecário}")
+    private String librarianAddress;
+
     public InitializationService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder) {
         this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -50,6 +73,7 @@ public class InitializationService {
     @PostConstruct
     public void init() {
         createDefaultAdmin();
+        createDefaultLibrarian();
     }
 
     private void createDefaultAdmin() {
@@ -71,12 +95,38 @@ public class InitializationService {
                 logger.info("✅ Admin criado com sucesso!");
                 logger.info("📧 Email: {}", adminEmail);
                 logger.info("🔑 Senha: {}", adminPassword);
-                logger.warn("⚠️  ALTERE A SENHA PADRÃO APÓS O PRIMEIRO LOGIN!");
             } else {
                 logger.info("ℹ️  Admin já existe no sistema");
             }
         } catch (Exception e) {
             logger.error("❌ Erro ao criar admin: {}", e.getMessage());
+        }
+    }
+
+    private void createDefaultLibrarian() {
+        try {
+            if (customerRepository.findByEmail(librarianEmail).isEmpty()) {
+                Customer librarian = Customer.builder()
+                        .name(librarianName)
+                        .email(librarianEmail)
+                        .password(passwordEncoder.encode(librarianPassword))
+                        .cpf(librarianCpf)
+                        .phone(librarianPhone)
+                        .dateBirth(LocalDate.parse(librarianDateBirth))
+                        .address(librarianAddress)
+                        .status(CustomerStatus.ACTIVE)
+                        .role(CustomerRole.LIBRARIAN)
+                        .build();
+
+                customerRepository.save(librarian);
+                logger.info("✅ Bibliotecário criado com sucesso!");
+                logger.info("📧 Email: {}", librarianEmail);
+                logger.info("🔑 Senha: {}", librarianPassword);
+            } else {
+                logger.info("ℹ️  Bibliotecário já existe no sistema");
+            }
+        } catch (Exception e) {
+            logger.error("❌ Erro ao criar bibliotecário: {}", e.getMessage());
         }
     }
 }

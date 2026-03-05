@@ -5,7 +5,7 @@ import br.com.ExtraLibrary.ExtraLibrary.dto.request.LoginRequest;
 import br.com.ExtraLibrary.ExtraLibrary.dto.request.RegisterRequest;
 import br.com.ExtraLibrary.ExtraLibrary.dto.response.AuthResponse;
 import br.com.ExtraLibrary.ExtraLibrary.exception.DuplicatedRegisterException;
-import br.com.ExtraLibrary.ExtraLibrary.services.AuthenticationService;
+import br.com.ExtraLibrary.ExtraLibrary.services.security.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

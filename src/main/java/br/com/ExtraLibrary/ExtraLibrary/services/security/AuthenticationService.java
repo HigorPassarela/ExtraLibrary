@@ -1,9 +1,8 @@
-package br.com.ExtraLibrary.ExtraLibrary.services;
+package br.com.ExtraLibrary.ExtraLibrary.services.security;
 
 import br.com.ExtraLibrary.ExtraLibrary.dto.request.LoginRequest;
 import br.com.ExtraLibrary.ExtraLibrary.dto.request.RegisterRequest;
 import br.com.ExtraLibrary.ExtraLibrary.dto.response.AuthResponse;
-import br.com.ExtraLibrary.ExtraLibrary.exception.DuplicatedRegisterException;
 import br.com.ExtraLibrary.ExtraLibrary.models.Customer;
 import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerRole;
 import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerStatus;
