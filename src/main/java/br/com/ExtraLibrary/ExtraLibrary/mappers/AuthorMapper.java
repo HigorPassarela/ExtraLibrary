@@ -25,9 +25,7 @@ public class AuthorMapper {
                 author.getNacionality(),
                 author.getBirthDate(),
                 author.getBooks() != null ? author.getBooks().size() : 0,
-                // Se quiser incluir os livros, descomente a linha abaixo:
-                // author.getBooks() != null ? author.getBooks().stream().map(BookMapper::toDTO).toList() : Collections.emptyList()
-                Collections.emptyList() // ✅ Por enquanto, lista vazia para evitar referência circular
+                author.getBooks() != null ? author.getBooks().stream().map(BookMapper::toDTO).toList() : Collections.emptyList()
         );
     }
 }
