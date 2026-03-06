@@ -28,7 +28,10 @@ public class SecurityConfig {
     private final PasswordEncoder passwordEncoder;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, CustomUserDetailsService userDetailsService, PasswordEncoder passwordEncoder, CorsConfigurationSource corsConfigurationSource) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+                          CustomUserDetailsService userDetailsService,
+                          PasswordEncoder passwordEncoder,
+                          CorsConfigurationSource corsConfigurationSource) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
         this.passwordEncoder = passwordEncoder;
@@ -41,18 +44,23 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
-                        // 🟢 Endpoints públicos
+                        // 🟢 Endpoints públicos - Autenticação
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+
+                        // 🟢 Endpoints públicos - Documentação
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
 
-                        // 🟢 Endpoint público para listar todos os livros
+                        // 🟢 Endpoints públicos - Consulta de livros (sem compra)
                         .requestMatchers(HttpMethod.GET, "/api/v1/book").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/book/search/author/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/book/{id}").permitAll()
 
+                        // 🟢 Endpoints públicos - Consulta de autores
                         .requestMatchers(HttpMethod.GET, "/api/v1/author").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/author/name").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/author/nacionality").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/author/{id}").permitAll()
 
                         // 🔴 Endpoints críticos - apenas ADMIN
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
@@ -63,6 +71,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/customer/*/activate").hasRole("ADMIN")
                         .requestMatchers("/api/v1/customer/*/block").hasRole("ADMIN")
                         .requestMatchers("/api/v1/customer/*/disable").hasRole("ADMIN")
+
+                        // 🔵 VENDAS - APENAS USUÁRIOS AUTENTICADOS (PRINCIPAL MUDANÇA)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/sold").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/sold/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/sold/**").authenticated()
+                        .requestMatchers("/api/v1/sold/**").authenticated()
 
                         // 🔵 Logout requer autenticação
                         .requestMatchers("/api/v1/auth/logout").authenticated()
@@ -81,6 +95,7 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        // ✅ Usando o método não-deprecated
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
