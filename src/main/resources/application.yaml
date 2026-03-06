@@ -1,57 +1,191 @@
 spring:
   application:
     name: ExtraLibrary
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:development}
+
+  datasource:
+    url: ${DATABASE_URL}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+      naming:
+        physical-strategy: ${SPRING_JPA_HIBERNATE_NAMING_PHYSICAL_STRATEGY:org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy}
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: ${SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE:UTC}
+
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+    validate-on-migrate: ${SPRING_FLYWAY_VALIDATE_ON_MIGRATE:true}
+    clean-disabled: ${SPRING_FLYWAY_CLEAN_DISABLED:true}
+    repair: ${SPRING_FLYWAY_REPAIR_ENABLED:false}
+    out-of-order: true
+    ignore-migration-patterns: "*:missing,*:ignored"
+
+server:
+  port: ${PORT:8081}
+  forward-headers-strategy: framework
+  use-forward-headers: true
+  require-ssl: false
+  tomcat:
+    redirect-context-root: false
+    use-relative-redirects: true
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+    path: ${SPRINGDOC_API_DOCS_PATH:/v3/api-docs}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
+    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
+    url: /v3/api-docs
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    disable-swagger-default-url: true
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# App Configuration
+app:
+  admin:
+    name: ${ADMIN_NAME:Administrador}
+    email: ${ADMIN_EMAIL:admin@extralibrary.com}
+    password: ${ADMIN_PASSWORD:admin123}
+    cpf: ${ADMIN_CPF:00000000000}
+    phone: ${ADMIN_PHONE:11999999999}
+    dateBirth: ${ADMIN_DATE_BIRTH:1990-01-01}
+    address: ${ADMIN_ADDRESS:Endereço Admin}
+
+  librarian:
+    name: ${LIBRARIAN_NAME:Bibliotecário}
+    email: ${LIBRARIAN_EMAIL:librarian@extralibrary.com}
+    password: ${LIBRARIAN_PASSWORD:lib123}
+    cpf: ${LIBRARIAN_CPF:11111111111}
+    phone: ${LIBRARIAN_PHONE:11888888888}
+    dateBirth: ${LIBRARIAN_DATE_BIRTH:1985-05-15}
+    address: ${LIBRARIAN_ADDRESS:Endereço Bibliotecário}
+
+# CORS Configuration
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+# Logging
+logging:
+  level:
+    com.library: ${LOG_LEVEL:INFO}
+    org.springframework.security: ${LOG_LEVEL:INFO}
+    br.com.ExtraLibrary.ExtraLibrary: ${LOG_LEVEL:INFO}
+    org.flywaydb: ${LOG_LEVEL:INFO}
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+---
+# 🔧 DESENVOLVIMENTO (Railway)
+spring:
+  config:
+    activate:
+      on-profile: development
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    br.com.ExtraLibrary.ExtraLibrary: DEBUG
+    org.flywaydb: DEBUG
+
+---
+# 🧪 HOMOLOGAÇÃO (Railway)
+spring:
+  config:
+    activate:
+      on-profile: homolog
+
+logging:
+  level:
+    root: INFO
+    br.com.ExtraLibrary.ExtraLibrary: INFO
+    org.flywaydb: INFO
+
+---
+# 🚀 PRODUÇÃO (Railway)
+spring:
+  config:
+    activate:
+      on-profile: production
+
+logging:
+  level:
+    root: INFO
+    br.com.ExtraLibrary.ExtraLibrary: INFO
+    org.flywaydb: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+# 💻 LOCAL (Para desenvolvimento local apenas)
+spring:
+  config:
+    activate:
+      on-profile: local
 
   datasource:
     url: jdbc:postgresql://localhost:5432/libraryextra
     username: postgres
     password: postgres
-    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+      ddl-auto: update
+    show-sql: true
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+    enabled: false
 
 server:
   port: 8081
 
-# Configurações JWT
-jwt:
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expiration: 86400000 # 24 horas
-
-# Configuração do usuário admin inicial
-app:
-  admin:
-    name: "Administrador"
-    email: "admin@extralibrary.com"
-    password: "admin123"
-    cpf: "00000000000"
-    phone: "11999999999"
-    dateBirth: "1990-01-01"
-    address: "Endereço Admin"
-
-  librarian:
-    name: "Bibliotecário"
-    email: "librarian@extralibrary.com"
-    password: "lib123"
-    cpf: "11111111111"
-    phone: "11888888888"
-    dateBirth: "1985-05-15"
-    address: "Endereço Bibliotecário"
+cors:
+  allowed-origins: "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080"
 
 logging:
   level:
-    com.library: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
     br.com.ExtraLibrary.ExtraLibrary: DEBUG
