@@ -53,7 +53,7 @@ public class Book {
     private Long quantity;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "book_status", columnDefinition = "VARCHAT(50)", length = 20, nullable = false)
+    @Column(name = "book_status", columnDefinition = "VARCHAR(50)", length = 20, nullable = false)
     private BookStatus bookStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)

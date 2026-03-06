@@ -15,8 +15,16 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080")
+        registry.addMapping("/**")
+                .allowedOrigins(
+                        "http://localhost:3000",
+                        "http://localhost:8080",
+                        "http://127.0.0.1:3000",
+                        "http://127.0.0.1:8080",
+                        "https://extralibrary-production.up.railway.app",  // ← SUA URL
+                        "https://localhost",
+                        "http://localhost"
+                )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
@@ -27,26 +35,22 @@ public class CorsConfig implements WebMvcConfigurer {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Origens permitidas
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:8080",
                 "http://127.0.0.1:3000",
-                "http://127.0.0.1:8080"
+                "http://127.0.0.1:8080",
+                "https://extralibrary-production.up.railway.app",  // ← SUA URL
+                "https://localhost",
+                "http://localhost"
         ));
 
-        // Métodos permitidos
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-
-        // Headers permitidos
         configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Permitir credenciais
         configuration.setAllowCredentials(true);
 
-        // Aplicar para todas as rotas da API
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }
