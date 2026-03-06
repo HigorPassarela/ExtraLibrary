@@ -5,9 +5,7 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:development}
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/libraryextra}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: ${DATABASE_URL}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
@@ -32,8 +30,12 @@ spring:
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
     locations: classpath:db/migration
-    baseline-on-migrate: true
-    validate-on-migrate: true
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+    validate-on-migrate: ${SPRING_FLYWAY_VALIDATE_ON_MIGRATE:true}
+    clean-disabled: ${SPRING_FLYWAY_CLEAN_DISABLED:true}
+    repair: ${SPRING_FLYWAY_REPAIR_ENABLED:false}
+    out-of-order: true
+    ignore-migration-patterns: "*:missing,*:ignored"
 
 server:
   port: ${PORT:8081}
@@ -96,6 +98,7 @@ logging:
     com.library: ${LOG_LEVEL:INFO}
     org.springframework.security: ${LOG_LEVEL:INFO}
     br.com.ExtraLibrary.ExtraLibrary: ${LOG_LEVEL:INFO}
+    org.flywaydb: ${LOG_LEVEL:INFO}
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
@@ -110,11 +113,57 @@ management:
       show-details: when-authorized
 
 ---
-# DESENVOLVIMENTO (Local)
+# 🔧 DESENVOLVIMENTO (Railway)
 spring:
   config:
     activate:
       on-profile: development
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    br.com.ExtraLibrary.ExtraLibrary: DEBUG
+    org.flywaydb: DEBUG
+
+---
+# 🧪 HOMOLOGAÇÃO (Railway)
+spring:
+  config:
+    activate:
+      on-profile: homolog
+
+logging:
+  level:
+    root: INFO
+    br.com.ExtraLibrary.ExtraLibrary: INFO
+    org.flywaydb: INFO
+
+---
+# 🚀 PRODUÇÃO (Railway)
+spring:
+  config:
+    activate:
+      on-profile: production
+
+logging:
+  level:
+    root: INFO
+    br.com.ExtraLibrary.ExtraLibrary: INFO
+    org.flywaydb: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+# 💻 LOCAL (Para desenvolvimento local apenas)
+spring:
+  config:
+    activate:
+      on-profile: local
 
   datasource:
     url: jdbc:postgresql://localhost:5432/libraryextra
@@ -125,6 +174,9 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+  flyway:
+    enabled: false
 
 server:
   port: 8081
@@ -137,48 +189,3 @@ logging:
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     br.com.ExtraLibrary.ExtraLibrary: DEBUG
-
----
-# HOMOLOGAÇÃO (Railway)
-spring:
-  config:
-    activate:
-      on-profile: homolog
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-
-logging:
-  level:
-    root: INFO
-    br.com.ExtraLibrary.ExtraLibrary: INFO
-
----
-# PRODUÇÃO (Railway)
-spring:
-  config:
-    activate:
-      on-profile: production
-
-  datasource:
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-
-logging:
-  level:
-    root: INFO
-    br.com.ExtraLibrary.ExtraLibrary: INFO
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
