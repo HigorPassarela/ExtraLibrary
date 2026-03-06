@@ -15,15 +15,15 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
                 .allowedOrigins(
                         "http://localhost:3000",
                         "http://localhost:8080",
                         "http://127.0.0.1:3000",
                         "http://127.0.0.1:8080",
-                        "https://seu-frontend.vercel.app",
-                        "https://seu-frontend.netlify.app",
-                        "https://seu-frontend.railway.app"
+                        "https://extralibrary-production.up.railway.app",  // ← SUA URL
+                        "https://localhost",
+                        "http://localhost"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
@@ -40,9 +40,9 @@ public class CorsConfig implements WebMvcConfigurer {
                 "http://localhost:8080",
                 "http://127.0.0.1:3000",
                 "http://127.0.0.1:8080",
-                "https://seu-frontend.vercel.app",     // ← ADICIONE
-                "https://seu-frontend.netlify.app",    // ← ESTAS
-                "https://seu-frontend.railway.app"     // ← URLS
+                "https://extralibrary-production.up.railway.app",  // ← SUA URL
+                "https://localhost",
+                "http://localhost"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
@@ -50,7 +50,8 @@ public class CorsConfig implements WebMvcConfigurer {
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
+        source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
