@@ -5,8 +5,11 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Arrays;
 
 @Configuration
 public class SwaggerConfig {
@@ -20,7 +23,16 @@ public class SwaggerConfig {
                         .version("1.0"))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))
                 .components(new Components()
-                        .addSecuritySchemes("Bearer Authentication", createAPIKeyScheme()));
+                        .addSecuritySchemes("Bearer Authentication", createAPIKeyScheme()))
+                // ← ADICIONADO: Servers para forçar HTTPS em produção
+                .servers(Arrays.asList(
+                        new Server()
+                                .url("https://extralibrary-production.up.railway.app")
+                                .description("Production Server"),
+                        new Server()
+                                .url("http://localhost:8081")
+                                .description("Local Development Server")
+                ));
     }
 
     private SecurityScheme createAPIKeyScheme() {
