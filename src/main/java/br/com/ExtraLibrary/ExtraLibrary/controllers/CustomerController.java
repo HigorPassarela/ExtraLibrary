@@ -11,6 +11,8 @@ import br.com.ExtraLibrary.ExtraLibrary.models.enums.CustomerStatus;
 import br.com.ExtraLibrary.ExtraLibrary.services.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,7 +29,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("api/v1/customer")
-@Tag(name = "Customer Manager", description = "Manager for register Customers")
+@Tag(name = "Customer Management", description = "Gerenciamento de Clientes - Perfis, Status e Controle Contextual")
 @SecurityRequirement(name = "Bearer Authentication")
 public class CustomerController {
 
@@ -39,9 +41,19 @@ public class CustomerController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ✅ Criação de customer (público via auth/register, aqui apenas para ADMIN/LIBRARIAN)
     @PostMapping
-    @Operation(summary = "Create Customer", description = "Create customer - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Criar Cliente (Administrativo)",
+            description = "Cria um cliente diretamente pelo painel administrativo. " +
+                    "Nota: Clientes normalmente se registram via /auth/register."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Cliente criado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "409", description = "Email ou CPF já cadastrado"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> save(@RequestBody @Valid CustomerRequest customerRequest) {
         try {
@@ -62,12 +74,25 @@ public class CustomerController {
         }
     }
 
-    // ✅ Atualização contextual - user pode editar próprio perfil
     @PutMapping("/{id}")
-    @Operation(summary = "Update customer", description = "Update customer details")
+    @Operation(
+            summary = "Atualizar Cliente",
+            description = "Atualiza dados do cliente. Controle Contextual: " +
+                    "ADMIN/LIBRARIAN pode editar qualquer cliente. " +
+                    "CUSTOMER só pode editar próprio perfil."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Cliente atualizado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Não pode editar este perfil"),
+            @ApiResponse(responseCode = "404", description = "Cliente não encontrado"),
+            @ApiResponse(responseCode = "409", description = "Email ou CPF já em uso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN') or (hasRole('CUSTOMER') and @customerService.isOwner(#id, authentication.name))")
     public ResponseEntity<Object> update(
-            @Parameter(description = "Customer ID", required = true) @PathVariable("id") String id,
+            @Parameter(description = "UUID do cliente", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id,
             @RequestBody @Valid CustomerRequest customerRequest,
             Authentication authentication) {
         try {
@@ -88,11 +113,24 @@ public class CustomerController {
         }
     }
 
-    // ✅ Visualização contextual
     @GetMapping("/{id}")
-    @Operation(summary = "Get customer details", description = "Get customer details by ID")
+    @Operation(
+            summary = "Consultar Cliente por ID",
+            description = "Retorna dados do cliente. Controle Contextual: " +
+                    "ADMIN/LIBRARIAN tem acesso total a qualquer cliente. " +
+                    "CUSTOMER só visualiza próprio perfil."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Dados do cliente retornados"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Não pode ver este perfil"),
+            @ApiResponse(responseCode = "404", description = "Cliente não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN') or (hasRole('CUSTOMER') and @customerService.isOwner(#id, authentication.name))")
-    public ResponseEntity<CustomerResponse> getDetailsFromId(@PathVariable("id") String id) {
+    public ResponseEntity<CustomerResponse> getDetailsFromId(
+            @Parameter(description = "UUID do cliente", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
             return service.getForId(customerId)
@@ -103,9 +141,17 @@ public class CustomerController {
         }
     }
 
-    // ✅ Listar todos - apenas ADMIN/LIBRARIAN
     @GetMapping
-    @Operation(summary = "List all customers", description = "List all customers - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Listar Todos os Clientes",
+            description = "Retorna lista completa de clientes cadastrados. " +
+                    "Informações administrativas para gestão da base de clientes."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de clientes retornada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<CustomerResponse>> getAll() {
         List<Customer> customers = service.getAll();
@@ -116,11 +162,23 @@ public class CustomerController {
         return ResponseEntity.ok(customerResponses);
     }
 
-    // ✅ Buscar por nome - apenas ADMIN/LIBRARIAN
     @GetMapping("/name/{name}")
-    @Operation(summary = "Get customer by name", description = "Find customer by name - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Buscar por Nome",
+            description = "Busca clientes por nome (busca parcial). " +
+                    "Ferramenta administrativa para localizar clientes específicos."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Busca por nome realizada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Nenhum cliente encontrado com este nome"),
+            @ApiResponse(responseCode = "400", description = "Nome inválido")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<Object> getByName(@PathVariable("name") String name) {
+    public ResponseEntity<Object> getByName(
+            @Parameter(description = "Nome ou parte do nome", required = true, example = "João Silva")
+            @PathVariable("name") String name) {
         try {
             List<Customer> customers = service.findByName(name);
             List<CustomerResponse> responses = customers.stream()
@@ -137,31 +195,65 @@ public class CustomerController {
         }
     }
 
-    // ✅ Buscar por email - apenas ADMIN/LIBRARIAN
     @GetMapping("/email/{email}")
-    @Operation(summary = "Get by email", description = "Find customer by email - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Buscar por Email",
+            description = "Localiza cliente pelo endereço de email. " +
+                    "Útil para suporte ao cliente e verificações administrativas."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Cliente encontrado pelo email"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Email não encontrado")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<CustomerResponse> findByEmail(@PathVariable("email") String email) {
+    public ResponseEntity<CustomerResponse> findByEmail(
+            @Parameter(description = "Endereço de email", required = true, example = "cliente@email.com")
+            @PathVariable("email") String email) {
         return service.findByEmail(email)
                 .map(customer -> ResponseEntity.ok(CustomerMapper.toDTO(customer)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ✅ Buscar por CPF - apenas ADMIN/LIBRARIAN
     @GetMapping("/cpf/{cpf}")
-    @Operation(summary = "Get by cpf", description = "Find customer by CPF - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Buscar por CPF",
+            description = "Localiza cliente pelo número do CPF. " +
+                    "Identificação única para processos administrativos e fiscais."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Cliente encontrado pelo CPF"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "CPF não encontrado")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<CustomerResponse> findByCpf(@PathVariable("cpf") String cpf) {
+    public ResponseEntity<CustomerResponse> findByCpf(
+            @Parameter(description = "Número do CPF", required = true, example = "12345678901")
+            @PathVariable("cpf") String cpf) {
         return service.findByCpf(cpf)
                 .map(customer -> ResponseEntity.ok(CustomerMapper.toDTO(customer)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // ✅ Filtrar por status - apenas ADMIN/LIBRARIAN
     @GetMapping("/status/{status}")
-    @Operation(summary = "Get by status", description = "Find customers by status - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Filtrar por Status",
+            description = "Filtra clientes por status atual. " +
+                    "Status disponíveis: ACTIVE, BLOCKED, DISABLED"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Clientes filtrados por status"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "400", description = "Status inválido")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<Object> getCustomerByStatus(@PathVariable("status") String status) {
+    public ResponseEntity<Object> getCustomerByStatus(
+            @Parameter(description = "Status do cliente", required = true,
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(allowableValues = {"ACTIVE", "BLOCKED", "DISABLED"}))
+            @PathVariable("status") String status) {
         try {
             CustomerStatus customerStatus = CustomerStatus.valueOf(status.toUpperCase());
             List<Customer> customers = service.getCustomerByStatus(customerStatus);
@@ -176,9 +268,17 @@ public class CustomerController {
         }
     }
 
-    // ✅ Endpoints de status específicos - apenas ADMIN/LIBRARIAN
     @GetMapping("/active")
-    @Operation(summary = "Get active customers", description = "Get all active customers - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Clientes Ativos",
+            description = "Retorna apenas clientes com status ACTIVE. " +
+                    "Lista de clientes aptos para realizar compras."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Clientes ativos retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<CustomerResponse>> getActiveCustomers() {
         List<Customer> customers = service.getActiveCustomers();
@@ -190,7 +290,16 @@ public class CustomerController {
     }
 
     @GetMapping("/blocked")
-    @Operation(summary = "Get blocked customers", description = "Get all blocked customers - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Clientes Bloqueados",
+            description = "Retorna clientes com status BLOCKED. " +
+                    "Lista para revisão de bloqueios e possível reativação."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Clientes bloqueados retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<CustomerResponse>> getBlockedCustomer() {
         List<Customer> customers = service.getBlockedCustomers();
@@ -202,7 +311,16 @@ public class CustomerController {
     }
 
     @GetMapping("/disabled")
-    @Operation(summary = "Get disabled customers", description = "Get all disabled customers - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Clientes Desabilitados",
+            description = "Retorna clientes com status DISABLED. " +
+                    "Contas temporariamente desativadas."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Clientes desabilitados retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<CustomerResponse>> getDisabledCustomer() {
         List<Customer> customers = service.getDisabledCustomers();
@@ -213,18 +331,33 @@ public class CustomerController {
         return ResponseEntity.ok(responses);
     }
 
-    // ✅ Endpoint para próprio perfil
     @GetMapping("/profile")
-    @Operation(summary = "Get my profile", description = "Get current user profile")
+    @Operation(
+            summary = "Meu Perfil",
+            description = "Retorna dados do perfil do usuário logado. " +
+                    "Endpoint pessoal para visualização de dados próprios."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil retornado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<CustomerResponse> getMyProfile(Authentication authentication) {
         Customer customer = service.getMyProfile(authentication);
         return ResponseEntity.ok(CustomerMapper.toDTO(customer));
     }
 
-    // ✅ Atualizar próprio perfil
     @PutMapping("/profile")
-    @Operation(summary = "Update my profile", description = "Update current user profile")
+    @Operation(
+            summary = "Atualizar Meu Perfil",
+            description = "Permite ao usuário logado atualizar seus próprios dados. " +
+                    "Endpoint seguro para autogestão de perfil."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Perfil atualizado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> updateMyProfile(
             @RequestBody @Valid CustomerRequest customerRequest,
@@ -238,10 +371,22 @@ public class CustomerController {
         }
     }
 
-    // ✅ Gestão de status - apenas ADMIN (já configurado no SecurityConfig)
     @PatchMapping("/{id}/activate")
-    @Operation(summary = "Activate customer", description = "Activate customer - ADMIN only")
-    public ResponseEntity<Object> activateCustomer(@PathVariable("id") String id) {
+    @Operation(
+            summary = "Ativar Cliente",
+            description = "Ativa uma conta de cliente, permitindo compras e acesso completo. " +
+                    "Operação administrativa para gestão de status."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Cliente ativado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN"),
+            @ApiResponse(responseCode = "404", description = "Cliente não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
+    public ResponseEntity<Object> activateCustomer(
+            @Parameter(description = "UUID do cliente", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
             service.activateCustomer(customerId);
@@ -255,8 +400,21 @@ public class CustomerController {
     }
 
     @PatchMapping("/{id}/block")
-    @Operation(summary = "Block customer", description = "Block customer - ADMIN only")
-    public ResponseEntity<Object> blockCustomer(@PathVariable("id") String id) {
+    @Operation(
+            summary = "Bloquear Cliente",
+            description = "Bloqueia um cliente impedindo compras e acesso. " +
+                    "Usado para clientes com problemas ou violações de política."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Cliente bloqueado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN"),
+            @ApiResponse(responseCode = "404", description = "Cliente não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
+    public ResponseEntity<Object> blockCustomer(
+            @Parameter(description = "UUID do cliente", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
             service.blockedCustomer(customerId);
@@ -270,8 +428,21 @@ public class CustomerController {
     }
 
     @PatchMapping("/{id}/disable")
-    @Operation(summary = "Disable customer", description = "Disable customer - ADMIN only")
-    public ResponseEntity<Object> disableCustomer(@PathVariable("id") String id) {
+    @Operation(
+            summary = "Desabilitar Cliente",
+            description = "Desabilita temporariamente um cliente. " +
+                    "Status intermediário entre ativo e bloqueado."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Cliente desabilitado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN"),
+            @ApiResponse(responseCode = "404", description = "Cliente não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
+    public ResponseEntity<Object> disableCustomer(
+            @Parameter(description = "UUID do cliente", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
             service.disabledCustomer(customerId);
@@ -285,8 +456,21 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete customer", description = "Delete customer - ADMIN only")
-    public ResponseEntity<Object> delete(@PathVariable("id") String id) {
+    @Operation(
+            summary = "Excluir Cliente",
+            description = "Remove um cliente do sistema permanentemente. " +
+                    "ATENÇÃO: Ação irreversível que pode afetar histórico de vendas."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Cliente excluído com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN"),
+            @ApiResponse(responseCode = "404", description = "Cliente não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido ou cliente possui vendas associadas")
+    })
+    public ResponseEntity<Object> delete(
+            @Parameter(description = "UUID do cliente", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID customerId = UUID.fromString(id);
             service.delete(customerId);

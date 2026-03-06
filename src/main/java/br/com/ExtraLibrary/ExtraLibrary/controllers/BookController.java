@@ -10,6 +10,8 @@ import br.com.ExtraLibrary.ExtraLibrary.models.Book;
 import br.com.ExtraLibrary.ExtraLibrary.services.BookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,7 +27,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("api/v1/book")
-@Tag(name = "Books Manager", description = "Manager for register books")
+@Tag(name = "Books Management", description = "Gerenciamento Completo de Livros - Catálogo, Estoque e Vendas")
 @SecurityRequirement(name = "Bearer Authentication")
 public class BookController {
 
@@ -36,7 +38,19 @@ public class BookController {
     }
 
     @PostMapping
-    @Operation(summary = "Create/Register new Books", description = "Endpoint for register Books - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Cadastrar Novo Livro",
+            description = "Registra um novo livro no catálogo vinculando-o a um autor existente. " +
+                    "Valida ISBN único e dados obrigatórios. Apenas staff autorizado."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Livro cadastrado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Autor não encontrado"),
+            @ApiResponse(responseCode = "409", description = "ISBN já existe no sistema"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> save(@RequestBody @Valid BookRequest bookRequest) {
         try {
@@ -60,9 +74,21 @@ public class BookController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get details from id", description = "Endpoint for Get books details")
+    @Operation(
+            summary = "Consultar Livro por ID",
+            description = "Retorna detalhes completos de um livro incluindo autor, estoque e preço. " +
+                    "Disponível para todos os usuários autenticados."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livro encontrado"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "404", description = "Livro não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<BookResponse> getDetailsFromId(@PathVariable("id") String id) {
+    public ResponseEntity<BookResponse> getDetailsFromId(
+            @Parameter(description = "UUID do livro", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID bookId = UUID.fromString(id);
 
@@ -80,7 +106,15 @@ public class BookController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all Details", description = "Endpoint for Get all books details")
+    @Operation(
+            summary = "Listar Todos os Livros",
+            description = "Retorna catálogo completo de livros disponível para navegação. " +
+                    "Endpoint público para facilitar busca e descoberta de títulos."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Catálogo de livros retornado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente")
+    })
     public ResponseEntity<List<BookResponse>> getAll() {
         List<Book> books = service.getAll();
         List<BookResponse> bookResponses = books.stream()
@@ -91,9 +125,24 @@ public class BookController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Updated Books details", description = "Endpoint for update books - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Atualizar Dados do Livro",
+            description = "Atualiza informações de um livro existente incluindo preço, descrição e autor. " +
+                    "Valida integridade dos dados e referências."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Livro atualizado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Livro ou autor não encontrado"),
+            @ApiResponse(responseCode = "409", description = "ISBN conflitante"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<Object> update(@PathVariable("id") String id, @RequestBody @Valid BookRequest bookRequest) {
+    public ResponseEntity<Object> update(
+            @Parameter(description = "UUID do livro", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id,
+            @RequestBody @Valid BookRequest bookRequest) {
         try {
             UUID bookId = UUID.fromString(id);
             Book book = BookMapper.toEntity(bookRequest);
@@ -113,10 +162,23 @@ public class BookController {
     }
 
     @PatchMapping("/{id}/addQuantity")
-    @Operation(summary = "Add Stock", description = "Add books in stock - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Adicionar Estoque",
+            description = "Adiciona quantidade ao estoque de um livro específico. " +
+                    "Usado para reposição de estoque após recebimento de mercadorias."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Estoque adicionado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Livro não encontrado"),
+            @ApiResponse(responseCode = "400", description = "Quantidade inválida (deve ser > 0)")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> addQuantity(
-            @Parameter(description = "Book ID", required = true) @PathVariable("id") String id,
+            @Parameter(description = "UUID do livro", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id,
+            @Parameter(description = "Quantidade a adicionar", required = true, example = "10")
             @RequestParam("quantity") @Min(value = 1, message = "Deve ser maior que zero") Long quantity) {
         try {
             UUID bookId = UUID.fromString(id);
@@ -134,10 +196,23 @@ public class BookController {
     }
 
     @PatchMapping("/{id}/sellBook")
-    @Operation(summary = "Sell Books", description = "Endpoint for sell/remove quantity books in stock - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Registrar Venda (Reduzir Estoque)",
+            description = "Remove quantidade do estoque ao registrar uma venda. " +
+                    "Valida se há estoque suficiente antes de processar."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Venda processada e estoque atualizado"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Livro não encontrado"),
+            @ApiResponse(responseCode = "400", description = "Estoque insuficiente ou quantidade inválida")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> sellBooks(
-            @Parameter(description = "Book ID", required = true) @PathVariable("id") String id,
+            @Parameter(description = "UUID do livro", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id,
+            @Parameter(description = "Quantidade vendida", required = true, example = "2")
             @RequestParam("quantity") @Min(value = 1, message = "Deve ser maior que zero") Long quantity) {
         try {
             UUID bookId = UUID.fromString(id);
@@ -155,9 +230,22 @@ public class BookController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete book", description = "Endpoint for delete book - ADMIN only")
+    @Operation(
+            summary = "Excluir Livro",
+            description = "Remove um livro do catálogo permanentemente. " +
+                    "ATENÇÃO: Ação irreversível que pode afetar histórico de vendas. Apenas administradores."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Livro excluído com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN"),
+            @ApiResponse(responseCode = "404", description = "Livro não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido ou livro possui vendas associadas")
+    })
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Object> delete(@PathVariable("id") String id) {
+    public ResponseEntity<Object> delete(
+            @Parameter(description = "UUID do livro", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID bookId = UUID.fromString(id);
             service.delete(bookId);
@@ -173,9 +261,19 @@ public class BookController {
     }
 
     @GetMapping("/search/title")
-    @Operation(summary = "Search books by title", description = "Search books by title")
+    @Operation(
+            summary = "Buscar por Título",
+            description = "Busca livros por título (busca parcial e case-insensitive). " +
+                    "Útil para encontrar livros quando você lembra parte do nome."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Busca por título realizada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<List<BookResponse>> searchByTitle(@RequestParam String title) {
+    public ResponseEntity<List<BookResponse>> searchByTitle(
+            @Parameter(description = "Título ou parte do título", required = true, example = "Dom Casmurro")
+            @RequestParam String title) {
         List<Book> books = service.findByTitle(title);
         List<BookResponse> responses = books.stream()
                 .map(BookMapper::toDTO)
@@ -185,18 +283,40 @@ public class BookController {
     }
 
     @GetMapping("/search/isbn/{isbn}")
-    @Operation(summary = "Search book by ISBN", description = "Search book by ISBN")
+    @Operation(
+            summary = "Buscar por ISBN",
+            description = "Busca livro específico pelo código ISBN. " +
+                    "Retorna resultado único já que ISBN é identificador exclusivo."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livro encontrado pelo ISBN"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "404", description = "ISBN não encontrado no catálogo")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<BookResponse> searchByIsbn(@PathVariable String isbn) {
+    public ResponseEntity<BookResponse> searchByIsbn(
+            @Parameter(description = "Código ISBN do livro", required = true, example = "978-85-359-0277-5")
+            @PathVariable String isbn) {
         return service.findByIsbn(isbn)
                 .map(book -> ResponseEntity.ok(BookMapper.toDTO(book)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search/author/{authorId}")
-    @Operation(summary = "Get books by author", description = "Get all books by author ID")
+    @Operation(
+            summary = "Livros por Autor",
+            description = "Retorna todos os livros de um autor específico. " +
+                    "Ideal para explorar a obra completa de um escritor."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livros do autor retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "400", description = "ID do autor inválido")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<List<BookResponse>> getBooksByAuthor(@PathVariable String authorId) {
+    public ResponseEntity<List<BookResponse>> getBooksByAuthor(
+            @Parameter(description = "UUID do autor", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable String authorId) {
         try {
             UUID authorUuid = UUID.fromString(authorId);
             List<Book> books = service.findByAuthor(authorUuid);
@@ -211,9 +331,20 @@ public class BookController {
     }
 
     @GetMapping("/search/genre/{genre}")
-    @Operation(summary = "Get books by genre", description = "Get all books by genre")
+    @Operation(
+            summary = "Livros por Gênero",
+            description = "Filtra livros por categoria/gênero literário. " +
+                    "Perfeito para descobrir novos títulos em gêneros favoritos."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livros do gênero retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "400", description = "Gênero inválido")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<List<BookResponse>> getBooksByGenre(@PathVariable String genre) {
+    public ResponseEntity<List<BookResponse>> getBooksByGenre(
+            @Parameter(description = "Gênero literário", required = true, example = "Romance")
+            @PathVariable String genre) {
         try {
             List<Book> books = service.findByGender(genre);
             List<BookResponse> responses = books.stream()
@@ -227,7 +358,15 @@ public class BookController {
     }
 
     @GetMapping("/available")
-    @Operation(summary = "Get available books", description = "Get all books in stock")
+    @Operation(
+            summary = "Livros Disponíveis",
+            description = "Retorna apenas livros com estoque disponível para venda. " +
+                    "Filtra automaticamente livros em falta."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livros disponíveis retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<List<BookResponse>> getAvailableBooks() {
         List<Book> books = service.findAvailableBooks();
@@ -239,7 +378,16 @@ public class BookController {
     }
 
     @GetMapping("/inventory/report")
-    @Operation(summary = "Get inventory report", description = "Get books inventory report - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Relatório de Inventário",
+            description = "Gera relatório completo do estoque: total de livros, valores, " +
+                    "produtos em falta, etc. Informações gerenciais para controle de estoque."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Relatório de inventário gerado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> getInventoryReport() {
         Object report = service.getInventoryReport();
@@ -247,9 +395,20 @@ public class BookController {
     }
 
     @GetMapping("/inventory/low-stock")
-    @Operation(summary = "Get low stock books", description = "Get books with low stock - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Livros com Estoque Baixo",
+            description = "Identifica livros com estoque abaixo do limite configurado. " +
+                    "Essencial para reposição proativa de mercadorias."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livros com estoque baixo identificados"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<List<BookResponse>> getLowStockBooks(@RequestParam(defaultValue = "5") Long threshold) {
+    public ResponseEntity<List<BookResponse>> getLowStockBooks(
+            @Parameter(description = "Limite mínimo de estoque", example = "5")
+            @RequestParam(defaultValue = "5") Long threshold) {
         List<Book> books = service.findLowStockBooks(threshold);
         List<BookResponse> responses = books.stream()
                 .map(BookMapper::toDTO)

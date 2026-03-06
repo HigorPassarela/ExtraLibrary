@@ -10,6 +10,8 @@ import br.com.ExtraLibrary.ExtraLibrary.models.Author;
 import br.com.ExtraLibrary.ExtraLibrary.services.AuthorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,8 +26,8 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("api/v1/author")
-@Tag(name = "Author Manager", description = "Manager for register Authors")
-@SecurityRequirement(name = "Bearer Authentication") // ✅ Requer autenticação
+@Tag(name = "Author Management", description = "Gerenciamento de Autores - CRUD completo e consultas especializadas")
+@SecurityRequirement(name = "Bearer Authentication")
 public class AuthorController {
 
     private final AuthorService service;
@@ -34,9 +36,19 @@ public class AuthorController {
         this.service = service;
     }
 
-    // ✅ Criar autor - apenas ADMIN/LIBRARIAN
     @PostMapping
-    @Operation(summary = "Create/Register new Author", description = "Endpoint for register Authors - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Cadastrar Novo Autor",
+            description = "Registra um novo autor no sistema com validação de duplicatas. " +
+                    "Apenas administradores e bibliotecários podem cadastrar autores."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Autor cadastrado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "409", description = "Autor já existe com esses dados"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> save(@RequestBody @Valid AuthorRequest authorRequest) {
         try {
@@ -56,12 +68,24 @@ public class AuthorController {
         }
     }
 
-    // ✅ Atualizar autor - apenas ADMIN/LIBRARIAN
     @PutMapping("/{id}")
-    @Operation(summary = "Update author", description = "Endpoint for updated author details - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Atualizar Dados do Autor",
+            description = "Atualiza informações de um autor existente. " +
+                    "Valida duplicatas e verifica se o autor existe antes de atualizar."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Autor atualizado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Autor não encontrado"),
+            @ApiResponse(responseCode = "409", description = "Dados conflitantes com outro autor"),
+            @ApiResponse(responseCode = "400", description = "ID inválido ou dados incorretos")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> update(
-            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id,
+            @Parameter(description = "UUID do autor", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id,
             @RequestBody @Valid AuthorRequest authorRequest) {
         try {
             UUID authorId = UUID.fromString(id);
@@ -81,11 +105,22 @@ public class AuthorController {
         }
     }
 
-    // ✅ Buscar autor por ID - todos os usuários autenticados
     @GetMapping("/{id}")
-    @Operation(summary = "Get details from id", description = "Endpoint for Get authors details")
+    @Operation(
+            summary = "Consultar Autor por ID",
+            description = "Retorna detalhes completos de um autor específico incluindo seus livros. " +
+                    "Disponível para todos os usuários autenticados."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Autor encontrado"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "404", description = "Autor não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<AuthorResponse> getDetailsFromId(@PathVariable("id") String id) {
+    public ResponseEntity<AuthorResponse> getDetailsFromId(
+            @Parameter(description = "UUID do autor", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID idAuthor = UUID.fromString(id);
 
@@ -102,9 +137,16 @@ public class AuthorController {
         }
     }
 
-    // ✅ Listar todos os autores - todos os usuários autenticados
     @GetMapping
-    @Operation(summary = "List all authors", description = "Endpoint for list all authors")
+    @Operation(
+            summary = "Listar Todos os Autores",
+            description = "Retorna lista completa de todos os autores cadastrados no sistema. " +
+                    "Endpoint público para facilitar navegação e busca de livros."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de autores retornada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente")
+    })
     public ResponseEntity<List<AuthorResponse>> getAll() {
         List<Author> authors = service.getAll();
         List<AuthorResponse> authorResponses = authors.stream()
@@ -114,11 +156,20 @@ public class AuthorController {
         return ResponseEntity.ok(authorResponses);
     }
 
-    // ✅ Buscar por nome - todos os usuários autenticados
     @GetMapping("/name")
-    @Operation(summary = "Find authors from name", description = "Endpoint for list authors from your names")
+    @Operation(
+            summary = "Buscar Autores por Nome",
+            description = "Busca autores por nome (busca parcial). " +
+                    "Útil para encontrar autores quando você não sabe o nome completo."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "400", description = "Parâmetro de busca inválido")
+    })
     public ResponseEntity<List<AuthorResponse>> findByName(
-            @Parameter(description = "Name", required = true) @RequestParam("name") String name) {
+            @Parameter(description = "Nome ou parte do nome do autor", required = true, example = "Machado")
+            @RequestParam("name") String name) {
         try {
             List<Author> authors = service.findByName(name);
             List<AuthorResponse> authorResponses = authors.stream()
@@ -132,11 +183,20 @@ public class AuthorController {
         }
     }
 
-    // ✅ Buscar por nacionalidade - todos os usuários autenticados
     @GetMapping("/nacionality")
-    @Operation(summary = "Find authors from nacionality", description = "Endpoint for list authors from your nacionality")
+    @Operation(
+            summary = "Buscar Autores por Nacionalidade",
+            description = "Filtra autores por nacionalidade. " +
+                    "Útil para encontrar literatura de países específicos."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Busca por nacionalidade realizada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "400", description = "Nacionalidade inválida")
+    })
     public ResponseEntity<List<AuthorResponse>> findByNacionality(
-            @Parameter(description = "Nacionality", required = true) @RequestParam("nacionality") String nacionality) {
+            @Parameter(description = "Nacionalidade do autor", required = true, example = "Brasileira")
+            @RequestParam("nacionality") String nacionality) {
         try {
             List<Author> authors = service.findByNacionality(nacionality);
             List<AuthorResponse> authorResponses = authors.stream()
@@ -150,12 +210,23 @@ public class AuthorController {
         }
     }
 
-    // ✅ Estatísticas do autor - apenas ADMIN/LIBRARIAN
     @GetMapping("/{id}/stats")
-    @Operation(summary = "Find authors stats/books from id", description = "Endpoint for list authors stats from id - ADMIN/LIBRARIAN only")
+    @Operation(
+            summary = "Estatísticas do Autor",
+            description = "Retorna estatísticas detalhadas do autor: quantidade de livros, vendas, etc. " +
+                    "Informações gerenciais para administradores e bibliotecários."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Estatísticas retornadas com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN/LIBRARIAN"),
+            @ApiResponse(responseCode = "404", description = "Autor não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<Object> getAuthorStats(
-            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
+            @Parameter(description = "UUID do autor", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID authorId = UUID.fromString(id);
             AuthorService.AuthorStats stats = service.getAuthorStats(authorId);
@@ -170,12 +241,22 @@ public class AuthorController {
         }
     }
 
-    // ✅ Livros do autor - todos os usuários autenticados
     @GetMapping("/{id}/books")
-    @Operation(summary = "Find books of author", description = "Find all books from specific author")
+    @Operation(
+            summary = "Livros do Autor",
+            description = "Retorna todos os livros de um autor específico. " +
+                    "Útil para clientes navegarem pela obra completa de um autor."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livros do autor retornados com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "404", description = "Autor não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
+    })
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'LIBRARIAN')")
     public ResponseEntity<AuthorResponse> getAuthorBooks(
-            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
+            @Parameter(description = "UUID do autor", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID authorId = UUID.fromString(id);
 
@@ -192,17 +273,28 @@ public class AuthorController {
         }
     }
 
-    // ✅ Deletar autor - apenas ADMIN
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete author", description = "Delete specific author from id - ADMIN only")
+    @Operation(
+            summary = "Excluir Autor",
+            description = "Remove um autor do sistema permanentemente. " +
+                    "ATENÇÃO: Esta ação é irreversível e pode afetar livros associados. Apenas administradores."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Autor excluído com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "403", description = "Acesso negado - Apenas ADMIN"),
+            @ApiResponse(responseCode = "404", description = "Autor não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido ou autor possui livros associados")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> delete(
-            @Parameter(description = "Author ID", required = true) @PathVariable("id") String id) {
+            @Parameter(description = "UUID do autor", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
+            @PathVariable("id") String id) {
         try {
             UUID authorId = UUID.fromString(id);
             service.delete(authorId);
 
-            return ResponseEntity.noContent().build(); // ✅ Corrigido: deve retornar 204 No Content
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             var error = ErrorResponse.badrequest(e.getMessage());
             return ResponseEntity.status(error.status()).body(error);

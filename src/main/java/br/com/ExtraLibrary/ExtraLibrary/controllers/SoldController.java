@@ -36,7 +36,8 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/sold")
-@Tag(name = "Sold Manager", description = "Gerenciamento de Vendas - Requer Autenticação JWT")
+@Tag(name = "Sales Management", description = "Gerenciamento de Vendas - Sistema Completo de Transações e Relatórios")
+@SecurityRequirement(name = "Bearer Authentication")
 public class SoldController {
 
     private static final Logger logger = LoggerFactory.getLogger(SoldController.class);
@@ -52,46 +53,47 @@ public class SoldController {
     @PostMapping
     @Operation(
             summary = "Registrar Nova Venda",
-            description = "Endpoint para registrar vendas de livros para clientes. **REQUER AUTENTICAÇÃO JWT**"
+            description = "Processa uma nova venda de livros para clientes. " +
+                    "Funcionalidades: Valida estoque, calcula preços, atualiza inventário automaticamente. " +
+                    "REQUER AUTENTICAÇÃO JWT - Todas as vendas são auditadas."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Venda criada com sucesso"),
+            @ApiResponse(responseCode = "201", description = "Venda registrada com sucesso - Estoque atualizado"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos ou estoque insuficiente"),
-            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
+            @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente - Login obrigatório"),
             @ApiResponse(responseCode = "404", description = "Cliente ou livro não encontrado"),
             @ApiResponse(responseCode = "409", description = "Venda duplicada detectada")
     })
-    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> save(
             @RequestBody @Valid SoldRequest soldRequest,
             Authentication authentication) {
         try {
-            // ✅ Verificação adicional de autenticação (dupla segurança)
+            // Verificação adicional de autenticação (dupla segurança)
             if (authentication == null || !authentication.isAuthenticated()) {
                 logger.warn("Attempt to make purchase without authentication");
-                var error = ErrorResponse.unauthorized("❌ Usuário deve estar logado para realizar compras");
+                var error = ErrorResponse.unauthorized("Usuário deve estar logado para realizar compras");
                 return ResponseEntity.status(error.status()).body(error);
             }
 
-            // 📝 Log de auditoria - quem está fazendo a compra
+            // Log de auditoria - quem está fazendo a compra
             String userEmail = authentication.getName();
             String authorities = authentication.getAuthorities().toString();
 
-            logger.info("🛒 User {} (roles: {}) is making a purchase for customer {}",
+            logger.info("User {} (roles: {}) is making a purchase for customer {}",
                     userEmail, authorities, soldRequest.customerId());
 
-            // 💼 Processar a venda
+            // Processar a venda
             Sold sold = SoldMapper.toEntity(soldRequest);
             Sold savedSold = service.save(sold, authentication);
 
-            // 📍 Criar URI de localização do recurso criado
+            // Criar URI de localização do recurso criado
             URI location = ServletUriComponentsBuilder
                     .fromCurrentRequest()
                     .path("/{id}")
                     .buildAndExpand(savedSold.getId())
                     .toUri();
 
-            logger.info("✅ Sale {} successfully created by user {} for customer {} - Total: R$ {}",
+            logger.info("Sale {} successfully created by user {} for customer {} - Total: R$ {}",
                     savedSold.getId(), userEmail, soldRequest.customerId(), savedSold.getFinalPrice());
 
             // Resposta de sucesso com detalhes da venda
@@ -105,22 +107,22 @@ public class SoldController {
             ));
 
         } catch (DuplicatedRegisterException e) {
-            logger.warn("⚠️ Duplicate sale attempt by {}: {}",
+            logger.warn("Duplicate sale attempt by {}: {}",
                     authentication != null ? authentication.getName() : "unknown", e.getMessage());
             var error = ErrorResponse.conflict(e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
         } catch (IllegalArgumentException e) {
-            logger.warn("⚠️ Invalid sale data from {}: {}",
+            logger.warn("Invalid sale data from {}: {}",
                     authentication != null ? authentication.getName() : "unknown", e.getMessage());
             var error = ErrorResponse.badrequest(e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
         } catch (ResourceNotFoundException e) {
-            logger.warn("⚠️ Resource not found during sale by {}: {}",
+            logger.warn("Resource not found during sale by {}: {}",
                     authentication != null ? authentication.getName() : "unknown", e.getMessage());
             var error = ErrorResponse.notFound(e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
         } catch (Exception e) {
-            logger.error("❌ Unexpected error during sale creation by {}: {}",
+            logger.error("Unexpected error during sale creation by {}: {}",
                     authentication != null ? authentication.getName() : "unknown", e.getMessage(), e);
             var error = ErrorResponse.internalServerError("Erro interno do servidor ao processar venda");
             return ResponseEntity.status(error.status()).body(error);
@@ -130,30 +132,30 @@ public class SoldController {
     @GetMapping("/{id}")
     @Operation(
             summary = "Consultar Venda por ID",
-            description = "Busca detalhes de uma venda específica pelo ID. **REQUER AUTENTICAÇÃO JWT**"
+            description = "Retorna detalhes completos de uma venda específica: cliente, livros, valores, forma de pagamento. " +
+                    "Útil para: Confirmação de compras, suporte ao cliente, auditoria de vendas."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Venda encontrada"),
+            @ApiResponse(responseCode = "200", description = "Detalhes da venda retornados com sucesso"),
             @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
             @ApiResponse(responseCode = "404", description = "Venda não encontrada"),
             @ApiResponse(responseCode = "400", description = "ID inválido")
     })
-    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> getDetailsFromId(
             @Parameter(description = "ID da venda", required = true, example = "1")
             @PathVariable String id,
             Authentication authentication) {
         try {
-            // ✅ Verificação de autenticação
+            // Verificação de autenticação
             if (authentication == null || !authentication.isAuthenticated()) {
-                var error = ErrorResponse.unauthorized("❌ Acesso negado. Faça login para consultar vendas.");
+                var error = ErrorResponse.unauthorized("Acesso negado. Faça login para consultar vendas.");
                 return ResponseEntity.status(error.status()).body(error);
             }
 
             Long soldId = Long.parseLong(id);
             String userEmail = authentication.getName();
 
-            logger.debug("🔍 User {} requesting sale details for ID: {}", userEmail, soldId);
+            logger.debug("User {} requesting sale details for ID: {}", userEmail, soldId);
 
             return service
                     .getForId(soldId)
@@ -170,7 +172,7 @@ public class SoldController {
             var error = ErrorResponse.badrequest("ID da venda deve ser um número válido");
             return ResponseEntity.status(error.status()).body(error);
         } catch (Exception e) {
-            logger.error("❌ Error retrieving sale {}: {}", id, e.getMessage());
+            logger.error("Error retrieving sale {}: {}", id, e.getMessage());
             var error = ErrorResponse.internalServerError("Erro ao consultar venda");
             return ResponseEntity.status(error.status()).body(error);
         }
@@ -179,34 +181,35 @@ public class SoldController {
     @GetMapping
     @Operation(
             summary = "Listar Todas as Vendas",
-            description = "Retorna todas as vendas registradas no sistema. **REQUER AUTENTICAÇÃO JWT** (Recomendado para administradores)"
+            description = "Retorna histórico completo de vendas do sistema. " +
+                    "Informações incluídas: Data, cliente, produtos, valores, forma de pagamento. " +
+                    "Recomendado para: Relatórios gerenciais, análise de vendas, auditoria."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista de vendas retornada com sucesso"),
             @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente")
     })
-    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> getAll(Authentication authentication) {
         try {
-            // ✅ Verificação de autenticação
+            // Verificação de autenticação
             if (authentication == null || !authentication.isAuthenticated()) {
-                var error = ErrorResponse.unauthorized("❌ Acesso negado. Faça login para consultar vendas.");
+                var error = ErrorResponse.unauthorized("Acesso negado. Faça login para consultar vendas.");
                 return ResponseEntity.status(error.status()).body(error);
             }
 
             String userEmail = authentication.getName();
-            logger.info("📊 User {} requesting all sales", userEmail);
+            logger.info("User {} requesting all sales", userEmail);
 
             List<Sold> solds = service.getAll();
             List<SoldResponse> soldResponses = solds.stream()
                     .map(mapper::toDTO)
                     .toList();
 
-            logger.debug("📋 Returning {} sales to user {}", soldResponses.size(), userEmail);
+            logger.debug("Returning {} sales to user {}", soldResponses.size(), userEmail);
             return ResponseEntity.ok((Object) soldResponses);
 
         } catch (Exception e) {
-            logger.error("❌ Error retrieving all sales: {}", e.getMessage());
+            logger.error("Error retrieving all sales: {}", e.getMessage());
             var error = ErrorResponse.internalServerError("Erro ao consultar vendas");
             return ResponseEntity.status(error.status()).body(error);
         }
@@ -214,31 +217,31 @@ public class SoldController {
 
     @GetMapping("/customer/{customerId}")
     @Operation(
-            summary = "Vendas por Cliente",
-            description = "Retorna todas as vendas de um cliente específico. **REQUER AUTENTICAÇÃO JWT**"
+            summary = "Histórico de Compras do Cliente",
+            description = "Retorna todas as compras realizadas por um cliente específico. " +
+                    "Útil para: Atendimento ao cliente, análise de comportamento de compra, fidelização."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Vendas do cliente retornadas"),
+            @ApiResponse(responseCode = "200", description = "Histórico de compras retornado com sucesso"),
             @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
             @ApiResponse(responseCode = "400", description = "ID do cliente inválido")
     })
-    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> getSalesByCustomer(
             @Parameter(description = "UUID do cliente", required = true,
                     example = "123e4567-e89b-12d3-a456-426614174000")
             @PathVariable("customerId") String customerId,
             Authentication authentication) {
         try {
-            // ✅ Verificação de autenticação
+            // Verificação de autenticação
             if (authentication == null || !authentication.isAuthenticated()) {
-                var error = ErrorResponse.unauthorized("❌ Acesso negado. Faça login para consultar vendas.");
+                var error = ErrorResponse.unauthorized("Acesso negado. Faça login para consultar vendas.");
                 return ResponseEntity.status(error.status()).body(error);
             }
 
             UUID customerUUID = UUID.fromString(customerId);
             String userEmail = authentication.getName();
 
-            logger.info("🔍 User {} requesting sales for customer {}", userEmail, customerUUID);
+            logger.info("User {} requesting sales for customer {}", userEmail, customerUUID);
 
             List<Sold> solds = service.getSalesByCustomer(customerUUID);
             List<SoldResponse> soldResponses = solds.stream()
@@ -251,7 +254,7 @@ public class SoldController {
             var error = ErrorResponse.badrequest("ID do cliente inválido: " + e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
         } catch (Exception e) {
-            logger.error("❌ Error retrieving sales for customer {}: {}", customerId, e.getMessage());
+            logger.error("Error retrieving sales for customer {}: {}", customerId, e.getMessage());
             var error = ErrorResponse.internalServerError("Erro ao consultar vendas do cliente");
             return ResponseEntity.status(error.status()).body(error);
         }
@@ -259,15 +262,16 @@ public class SoldController {
 
     @GetMapping("/payment/{paymentMethod}/stats")
     @Operation(
-            summary = "Estatísticas por Forma de Pagamento",
-            description = "Retorna vendas filtradas por método de pagamento. **REQUER AUTENTICAÇÃO JWT**"
+            summary = "Relatório por Forma de Pagamento",
+            description = "Analisa vendas segmentadas por método de pagamento. " +
+                    "Métodos disponíveis: CASH, CREDIT_CARD, DEBIT_CARD, PIX, BANK_TRANSFER. " +
+                    "Útil para: Análise financeira, preferências de pagamento, planejamento."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Estatísticas retornadas com sucesso"),
+            @ApiResponse(responseCode = "200", description = "Relatório de pagamento gerado com sucesso"),
             @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
             @ApiResponse(responseCode = "400", description = "Forma de pagamento inválida")
     })
-    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> getPaymentMethodStats(
             @Parameter(description = "Forma de pagamento", required = true,
                     example = "CASH",
@@ -277,16 +281,16 @@ public class SoldController {
             @PathVariable("paymentMethod") String paymentMethod,
             Authentication authentication) {
         try {
-            // ✅ Verificação de autenticação
+            // Verificação de autenticação
             if (authentication == null || !authentication.isAuthenticated()) {
-                var error = ErrorResponse.unauthorized("❌ Acesso negado. Faça login para consultar estatísticas.");
+                var error = ErrorResponse.unauthorized("Acesso negado. Faça login para consultar estatísticas.");
                 return ResponseEntity.status(error.status()).body(error);
             }
 
             FormPayment formPayment = FormPayment.valueOf(paymentMethod.toUpperCase());
             String userEmail = authentication.getName();
 
-            logger.info("📊 User {} requesting payment method stats for: {}", userEmail, formPayment);
+            logger.info("User {} requesting payment method stats for: {}", userEmail, formPayment);
 
             List<Sold> sales = service.getSalesByPaymentMethod(formPayment);
             List<SoldResponse> responses = sales.stream()
@@ -297,11 +301,11 @@ public class SoldController {
 
         } catch (IllegalArgumentException e) {
             var error = ErrorResponse.badrequest(
-                    "❌ Forma de pagamento inválida. Use: CASH, CREDIT_CARD, DEBIT_CARD, PIX, BANK_TRANSFER"
+                    "Forma de pagamento inválida. Use: CASH, CREDIT_CARD, DEBIT_CARD, PIX, BANK_TRANSFER"
             );
             return ResponseEntity.status(error.status()).body(error);
         } catch (Exception e) {
-            logger.error("❌ Error retrieving payment method stats: {}", e.getMessage());
+            logger.error("Error retrieving payment method stats: {}", e.getMessage());
             var error = ErrorResponse.internalServerError("Erro ao consultar estatísticas de pagamento");
             return ResponseEntity.status(error.status()).body(error);
         }
@@ -309,31 +313,32 @@ public class SoldController {
 
     @GetMapping("/customer/{customerId}/stats")
     @Operation(
-            summary = "Estatísticas do Cliente",
-            description = "Retorna contagem de vendas e valor total por cliente. **REQUER AUTENTICAÇÃO JWT**"
+            summary = "Estatísticas Detalhadas do Cliente",
+            description = "Gera relatório completo de um cliente: total de compras, valor gasto, frequência. " +
+                    "Informações retornadas: Quantidade de vendas, valor total investido, ticket médio. " +
+                    "Útil para: Programa de fidelidade, análise de valor do cliente (CLV)."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Estatísticas do cliente retornadas"),
+            @ApiResponse(responseCode = "200", description = "Estatísticas do cliente calculadas com sucesso"),
             @ApiResponse(responseCode = "401", description = "Token JWT inválido ou ausente"),
             @ApiResponse(responseCode = "400", description = "ID do cliente inválido")
     })
-    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> getCustomerStats(
             @Parameter(description = "UUID do cliente", required = true,
                     example = "123e4567-e89b-12d3-a456-426614174000")
             @PathVariable("customerId") String customerId,
             Authentication authentication) {
         try {
-            // ✅ Verificação de autenticação
+            // Verificação de autenticação
             if (authentication == null || !authentication.isAuthenticated()) {
-                var error = ErrorResponse.unauthorized("❌ Acesso negado. Faça login para consultar estatísticas.");
+                var error = ErrorResponse.unauthorized("Acesso negado. Faça login para consultar estatísticas.");
                 return ResponseEntity.status(error.status()).body(error);
             }
 
             UUID customerUUID = UUID.fromString(customerId);
             String userEmail = authentication.getName();
 
-            logger.info("📊 User {} requesting customer stats for: {}", userEmail, customerUUID);
+            logger.info("User {} requesting customer stats for: {}", userEmail, customerUUID);
 
             long salesCount = service.countSalesByCustomer(customerUUID);
             BigDecimal totalValue = service.getTotalSalesByCustomer(customerUUID);
@@ -345,13 +350,13 @@ public class SoldController {
             var error = ErrorResponse.badrequest("ID do cliente inválido: " + e.getMessage());
             return ResponseEntity.status(error.status()).body(error);
         } catch (Exception e) {
-            logger.error("❌ Error retrieving customer stats for {}: {}", customerId, e.getMessage());
+            logger.error("Error retrieving customer stats for {}: {}", customerId, e.getMessage());
             var error = ErrorResponse.internalServerError("Erro ao consultar estatísticas do cliente");
             return ResponseEntity.status(error.status()).body(error);
         }
     }
 
-    // 📊 Classe interna para estatísticas do cliente
+    // Classe interna para estatísticas do cliente
     public static class CustomerSalesStats {
         private final UUID customerId;
         private final long salesCount;
