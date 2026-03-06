@@ -1,5 +1,6 @@
 package br.com.ExtraLibrary.ExtraLibrary.config;
 
+import br.com.ExtraLibrary.ExtraLibrary.config.JwtAuthenticationFilter;
 import br.com.ExtraLibrary.ExtraLibrary.services.security.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,44 +45,65 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
-                        // 🟢 Endpoints públicos - Autenticação
+                        // 🟢 ENDPOINTS PÚBLICOS - SISTEMA
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/error").permitAll()
+
+                        // 🟢 ENDPOINTS PÚBLICOS - AUTENTICAÇÃO
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
 
-                        // 🟢 Endpoints públicos - Documentação
+                        // 🟢 ENDPOINTS PÚBLICOS - DOCUMENTAÇÃO
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
+                        .requestMatchers("/favicon.ico").permitAll()
 
-                        // 🟢 Endpoints públicos - Consulta de livros (sem compra)
+                        // 🟢 ENDPOINTS PÚBLICOS - CONSULTA DE LIVROS
                         .requestMatchers(HttpMethod.GET, "/api/v1/book").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/book/search/author/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/book/search/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/book/{id}").permitAll()
 
-                        // 🟢 Endpoints públicos - Consulta de autores
+                        // 🟢 ENDPOINTS PÚBLICOS - CONSULTA DE AUTORES  
                         .requestMatchers(HttpMethod.GET, "/api/v1/author").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/author/name").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/author/nacionality").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/author/name/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/author/nationality/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/author/{id}").permitAll()
 
-                        // 🔴 Endpoints críticos - apenas ADMIN
+                        // 🔴 ENDPOINTS CRÍTICOS - APENAS ADMIN
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/**").hasRole("ADMIN")
 
-                        // 🟡 Endpoints de gestão de status - apenas ADMIN
-                        .requestMatchers("/api/v1/customer/*/activate").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/customer/*/block").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/customer/*/disable").hasRole("ADMIN")
+                        // 🟡 ENDPOINTS DE GESTÃO - APENAS ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/customer/*/activate").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/customer/*/block").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/customer/*/disable").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/customer/*/status").hasRole("ADMIN")
 
-                        // 🔵 VENDAS - APENAS USUÁRIOS AUTENTICADOS (PRINCIPAL MUDANÇA)
+                        // 🔵 VENDAS - USUÁRIOS AUTENTICADOS
                         .requestMatchers(HttpMethod.POST, "/api/v1/sold").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/sold/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/sold/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/sold").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/sold/{id}").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/sold/{id}").authenticated()
                         .requestMatchers("/api/v1/sold/**").authenticated()
 
-                        // 🔵 Logout requer autenticação
-                        .requestMatchers("/api/v1/auth/logout").authenticated()
+                        // 🟠 GESTÃO DE LIVROS E AUTORES - ADMIN OU LIBRARIAN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/book").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/book/**").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/author").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/author/**").hasAnyRole("ADMIN", "LIBRARIAN")
 
-                        // 🟠 Demais endpoints - verificação detalhada nos Services
+                        // 🟠 GESTÃO DE CLIENTES - ADMIN OU LIBRARIAN
+                        .requestMatchers(HttpMethod.GET, "/api/v1/customer").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/customer/{id}").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/customer").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/customer/{id}").hasAnyRole("ADMIN", "LIBRARIAN")
+
+                        // 🔵 LOGOUT E PERFIL - USUÁRIOS AUTENTICADOS
+                        .requestMatchers("/api/v1/auth/logout").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
+
+                        // 🔒 DEMAIS ENDPOINTS - AUTENTICAÇÃO OBRIGATÓRIA
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -95,7 +117,6 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        // ✅ Usando o método não-deprecated
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
